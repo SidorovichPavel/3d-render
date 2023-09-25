@@ -1,0 +1,15 @@
+# Build folders
+build/
+
+# CMake
+CMakeCache.txt
+
+# IDEs
+.idea/
+.vs/
+.vscode/
+
+# Libraries
+/stl_reader
+/tinyalgebralib
+/threadpoollib
