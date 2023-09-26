@@ -7,7 +7,10 @@ find_package(glfw3 REQUIRED)
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
 
-add_executable(3d-render src/main.cpp)
+add_executable(3d-render 
+    src/main.cpp
+    src/Model.cpp
+)
 
 include_directories(stl_reader)
 
