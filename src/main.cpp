@@ -10,11 +10,8 @@
 
 #include <tinyalgebralib/math/math.hpp>
 
-#include "Model.hpp"
+#include "Model/Model.hpp"
 #include "Window/window.hpp"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 int main()
 {
@@ -33,10 +30,12 @@ int main()
     ta::vec2i screen_size{800, 600};
 
     std::unique_ptr<glfw::Window> window;
-    try{
+    try
+    {
         window = std::make_unique<glfw::Window>("GLFW Window", screen_size.x(), screen_size.y());
     }
-    catch (std::exception& e){
+    catch (std::exception &e)
+    {
         std::cerr << e.what() << std::endl;
     }
     window->make_current();
@@ -92,28 +91,15 @@ int main()
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
     auto view = ta::look_at(
         ta::vec3(0.f, 0.f, 200.f),
         ta::vec3(0.f, 0.f, 0.f),
         ta::vec3(0.f, 1.f, 0.f));
 
-    auto projection = ta::perspective(ta::rad(120.f), static_cast<float>(screen_size.x()) / screen_size.y(), 1.f, 400.f);
+    // glGenBuffers(1, &EBO);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices_sizeof(), model.indices(), GL_STATIC_DRAW);
 
-    auto data = model.transform(view, projection);
-
-    // Указание атрибутов вершинного шейдера
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void *)0);
-    glBufferData(GL_ARRAY_BUFFER, data.size() * 3 * sizeof(float), data.data(), GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    
-    //glGenBuffers(1, &EBO);
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices_sizeof(), model.indices(), GL_STATIC_DRAW);
-    
     // Рендеринг
     for (; !window->should_close();)
     {
@@ -122,8 +108,18 @@ int main()
 
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+        auto projection = ta::perspective(ta::rad(120.f), window->get_ratio(), 1.f, 400.f);
+
+        auto data = model.transform(view, projection);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void *)0);
+        glBufferData(GL_ARRAY_BUFFER, data.size() * 3 * sizeof(float), data.data(), GL_STREAM_DRAW);
+        glEnableVertexAttribArray(0);
+
         glDrawArrays(GL_TRIANGLES, 0, data.size());
-        //glDrawElements(GL_TRIANGLES, model.indices_count(), GL_UNSIGNED_INT, nullptr);
+        // glDrawElements(GL_TRIANGLES, model.indices_count(), GL_UNSIGNED_INT, nullptr);
 
         window->swap_buffers();
         glfwPollEvents();
