@@ -16,24 +16,23 @@ public:
 
 
     void make_current() const noexcept;
-    void swap_buffers() const noexcept;
     bool should_close() const noexcept;
+    void swap_buffers() const noexcept;
+    float get_ratio() const noexcept;
 
-private:
-    static void register_window(GLFWwindow* glfw_wdn, Window *wnd);
-    
+
+private:    
+    static void static_window_size_callback(GLFWwindow *window, int width, int height);
     static void static_key_callback(GLFWwindow *window, int key, int scancode, int action, int mode);
+    static void static_framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
-public:
-
+protected:
     void key_callback(int key, int scancode, int action, int mode);
-
+    void framebuffer_size_callback(int width, int height);
 private:
     GLFWwindow* window_;
-    int64_t width_, height_;
+    int width_, height_;
     std::string title_;
-
-    static std::map<GLFWwindow*, Window*> windows_map;
 };
 
 

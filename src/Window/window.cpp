@@ -4,9 +4,6 @@
 
 namespace glfw
 {
-
-    std::map<GLFWwindow *, Window *> Window::windows_map;
-
     Window::Window(const std::string &title, int width, int height) noexcept
         : title_(title),
           width_(width),
@@ -16,8 +13,10 @@ namespace glfw
         if (!window_)
             throw std::runtime_error("glfw::CreateWindow failed");
 
-        register_window(window_, this);
+        glfwSetWindowUserPointer(window_, this);
+
         glfwSetKeyCallback(window_, static_key_callback);
+        glfwSetFramebufferSizeCallback(window_, static_framebuffer_size_callback);
     }
 
     Window::~Window()
@@ -34,24 +33,54 @@ namespace glfw
         glfwSwapBuffers(window_);
     }
 
+    float Window::get_ratio() const noexcept
+    {
+        return static_cast<float>(width_) / static_cast<float>(height_);
+    }
+
     bool Window::should_close() const noexcept
     {
         return glfwWindowShouldClose(window_);
     }
 
-    void Window::register_window(GLFWwindow *glfw_wdn, Window *wnd)
-    {
-        windows_map[glfw_wdn] = wnd;
-    }
+    /*--------------------------------------------------------------------------------------------------------------------*/
+    /* STATIC MEMBERS */
+    /*--------------------------------------------------------------------------------------------------------------------*/
 
     void Window::static_key_callback(GLFWwindow *window, int key, int scancode, int action, int mode)
     {
-        windows_map[window]->key_callback(key, scancode, action, mode);
+        auto obj_ptr = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+        if (obj_ptr)
+            obj_ptr->key_callback(key, scancode, action, mode);
     }
+
+    void Window::static_framebuffer_size_callback(GLFWwindow *window, int width, int height)
+    {
+        auto obj_ptr = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+        if (obj_ptr)
+            obj_ptr->framebuffer_size_callback(width, height);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------------------*/
+    /* STATIC MEMBERS END*/
+    /*--------------------------------------------------------------------------------------------------------------------*/
+
+    /*--------------------------------------------------------------------------------------------------------------------*/
+    /* PROTECTED MEMBERS*/
+    /*--------------------------------------------------------------------------------------------------------------------*/
 
     void Window::key_callback(int key, int scancode, int action, int mode)
     {
         if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
             glfwSetWindowShouldClose(window_, GL_TRUE);
     }
+    void Window::framebuffer_size_callback(int width, int height)
+    {
+        glViewport(0, 0, width, height);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------------------*/
+    /* PROTECTED MEMBERS END*/
+    /*--------------------------------------------------------------------------------------------------------------------*/
+
 }
