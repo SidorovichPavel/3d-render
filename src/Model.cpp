@@ -1,4 +1,7 @@
 #include <iostream>
+#include <ranges>
+#include <algorithm>
+
 #include <stl_reader.h>
 
 #include "Model.hpp"
@@ -42,6 +45,16 @@ size_t Model::vertex_count() const noexcept
     return vertices_.size() * 3;
 }
 
+size_t Model::indices_count() const noexcept
+{
+    return triangles_.size();
+}
+
+size_t Model::indices_sizeof() const noexcept
+{
+    return triangles_.size() * sizeof(unsigned int);
+}
+
 float *Model::vdata() noexcept
 {
     if (vertices_.empty())
@@ -56,4 +69,16 @@ unsigned int *Model::indices() noexcept
         return nullptr;
 
     return triangles_.data();
+}
+
+std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexcept
+{
+    std::vector<ta::vec3> result;
+
+    std::ranges::for_each(vertices_, [&](ta::vec3 &vec) {
+        auto v4 = ta::vec4(vec, 1.f) * view * projection;
+        result.emplace_back(v4.x() / v4.w(), v4.y() / v4.w(), v4.z() / v4.w()); 
+    });
+
+    return result;
 }

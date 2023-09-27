@@ -15,9 +15,14 @@ public:
 
     void load_from_file(std::string_view file);
     size_t vertex_count() const noexcept;
-
+    
+    size_t indices_count() const noexcept;
+    size_t indices_sizeof() const noexcept;
+    
     float* vdata() noexcept;
     unsigned int* indices() noexcept;
+
+    std::vector<ta::vec3> transform(ta::mat4 view, ta::mat4 projection) noexcept;
 
 private:
     std::vector<ta::vec3> vertices_;
