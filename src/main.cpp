@@ -6,30 +6,18 @@
 #include <vector>
 #include <ranges>
 #include <algorithm>
+#include <memory>
 
 #include <tinyalgebralib/math/math.hpp>
 
 #include "Model.hpp"
+#include "Window/window.hpp"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 int main()
 {
-    ta::mat4 a{
-        { 1.f, 2.f, 2.f, 2.f },
-        { 2.f, 3.f, 3.f, 3.f },
-        { 3.f, 4.f, 4.f, 4.f },
-        { 4.f, 5.f, 5.f, 5.f }
-        }, 
-        b{
-        { 5.f, 6.f, 6.f, 6.f },
-        { 6.f, 7.f, 7.f, 7.f },
-        { 7.f, 8.f, 8.f, 8.f },
-        { 8.f, 9.f, 9.f, 9.f }
-        };
-    
-    auto c = a * b;
-
-    std::cout << c.to_string() << std::endl;
-
     std::string_view filename("/mnt/sata0/Workshop/3d-render/resources/models/hyperion.stl");
 
     Model model;
@@ -44,17 +32,14 @@ int main()
 
     ta::vec2i screen_size{800, 600};
 
-    // Создание окна GLFW
-    GLFWwindow *window = glfwCreateWindow(screen_size.x(), screen_size.y(), "OpenGL Triangle", NULL, NULL);
-    if (!window)
-    {
-        std::cerr << "Ошибка создания окна GLFW" << std::endl;
-        glfwTerminate();
-        return -1;
+    std::unique_ptr<glfw::Window> window;
+    try{
+        window = std::make_unique<glfw::Window>("GLFW Window", screen_size.x(), screen_size.y());
     }
-
-    // Активация окна GLFW
-    glfwMakeContextCurrent(window);
+    catch (std::exception& e){
+        std::cerr << e.what() << std::endl;
+    }
+    window->make_current();
 
     // Инициализация GLEW
     if (glewInit() != GLEW_OK)
@@ -62,8 +47,6 @@ int main()
         std::cerr << "Ошибка инициализации GLEW" << std::endl;
         return -1;
     }
-
-    // Точки экрана
 
     // Создание и компиляция вершинного шейдера
     const char *vertexShaderSource = R"(#version 330 core
@@ -105,31 +88,44 @@ int main()
                 (2.f * static_cast<float>(i) / screen_size.y()) - 1.f);
 
     // Создание буфера вершин и привязка данных
-    GLuint VBO, VAO;
+    GLuint VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, model.vertex_count() * sizeof(float), model.vdata(), GL_STATIC_DRAW);
+
+    auto view = ta::look_at(
+        ta::vec3(0.f, 0.f, 200.f),
+        ta::vec3(0.f, 0.f, 0.f),
+        ta::vec3(0.f, 1.f, 0.f));
+
+    auto projection = ta::perspective(ta::rad(120.f), static_cast<float>(screen_size.x()) / screen_size.y(), 1.f, 400.f);
+
+    auto data = model.transform(view, projection);
 
     // Указание атрибутов вершинного шейдера
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void *)0);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * 3 * sizeof(float), data.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-
+    
+    //glGenBuffers(1, &EBO);
+    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices_sizeof(), model.indices(), GL_STATIC_DRAW);
+    
     // Рендеринг
-    for (; !glfwWindowShouldClose(window);)
+    for (; !window->should_close();)
     {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        // glDrawArrays(GL_POINTS, 0, poss.size());
-        // glDrawElements(GL_TRIANGLES, 3, GL_FLOAT, model.indices());
+        glDrawArrays(GL_TRIANGLES, 0, data.size());
+        //glDrawElements(GL_TRIANGLES, model.indices_count(), GL_UNSIGNED_INT, nullptr);
 
-        glfwSwapBuffers(window);
+        window->swap_buffers();
         glfwPollEvents();
     }
 
