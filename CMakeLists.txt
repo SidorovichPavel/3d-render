@@ -11,7 +11,7 @@ find_package(OpenGL REQUIRED)
 
 add_executable(3d-render
     src/main.cpp
-    src/Model.cpp
+    src/Model/Model.cpp
     src/Window/window.cpp
 )
 
