@@ -3,9 +3,6 @@
 
 #include <tinyalgebralib/math/math.hpp>
 
-using vertex_t = ta::vec3;
-using normal_t = ta::vec3;
-
 class Model
 {
 public:
@@ -24,9 +21,14 @@ public:
 
     std::vector<ta::vec3> transform(ta::mat4 view, ta::mat4 projection) noexcept;
 
+    void load_identity() noexcept;
+    void rotare(const ta::vec3& axis, float angle);
+
 private:
     std::vector<ta::vec3> vertices_;
     std::vector<ta::vec3> normals_;
     std::vector<unsigned int> triangles_;
     std::vector<unsigned int> solid_ranges_;
+
+    ta::mat4 model_;
 };

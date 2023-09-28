@@ -22,7 +22,7 @@ struct Camera
     ta::vec3 pos, dir, up;
 };
 
-void do_movement(const glfw::Window &window, Camera &camera, float ms);
+void do_movement(const glfw::Window &window, Camera &camera, Model& model, float ms);
 
 int main()
 {
@@ -38,7 +38,7 @@ int main()
         return -1;
     }
 
-    ta::vec2i screen_size{800, 600};
+    ta::vec2i screen_size{1280, 720};
 
     std::unique_ptr<glfw::Window> window;
     try
@@ -110,7 +110,8 @@ int main()
     // glGenBuffers(1, &EBO);
     // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     // glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices_sizeof(), model.indices(), GL_STATIC_DRAW);
-
+    
+    model.rotare(ta::vec3(1.f, 0.f, 0.f), -ta::rad(90.f));
     auto time = std::chrono::steady_clock::now();
     // Рендеринг
     for (; !window->should_close();)
@@ -120,7 +121,8 @@ int main()
         auto tp = std::chrono::steady_clock::now();
         auto dt = 1000.f / std::chrono::duration_cast<std::chrono::milliseconds>(time - tp).count();
         time = tp;
-        do_movement(*window, camera, dt);
+
+        do_movement(*window, camera, model, dt);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -155,7 +157,7 @@ int main()
     return 0;
 }
 
-void do_movement(const glfw::Window &window, Camera &camera, float ms)
+void do_movement(const glfw::Window &window, Camera &camera, Model& model, float ms)
 {
     if (ms == INFINITY)
         ms = 0.0001f;
@@ -177,4 +179,13 @@ void do_movement(const glfw::Window &window, Camera &camera, float ms)
         camera.pos -= ta::normalize(ta::cross(camera.dir, camera.up)) * cameraSpeed * ms;
     if (keys[GLFW_KEY_D])
         camera.pos += ta::normalize(ta::cross(camera.dir, camera.up)) * cameraSpeed * ms;
+    if (keys[GLFW_KEY_UP])
+        model.rotare(ta::vec3(1.f,0.f,0.f), ta::rad(0.05f * ms));
+    if (keys[GLFW_KEY_DOWN])
+        model.rotare(ta::vec3(1.f,0.f,0.f), -ta::rad(0.05f * ms));
+    if (keys[GLFW_KEY_LEFT])
+        model.rotare(ta::vec3(0.f,1.f,0.f), ta::rad(0.05f * ms));
+    if (keys[GLFW_KEY_RIGHT])
+        model.rotare(ta::vec3(0.f,1.f,0.f), -ta::rad(0.05f * ms));
+    
 }

@@ -7,6 +7,7 @@
 #include "Model.hpp"
 
 Model::Model()
+    : model_(1.f)
 {
 }
 
@@ -76,10 +77,20 @@ std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexc
     std::vector<ta::vec3> result(vertices_.size());
 
     std::ranges::transform(vertices_, result.begin(), [&](ta::vec3 &vec) {
-        auto v4 = projection * view * ta::vec4(vec, 1.f);
+        auto v4 = projection * view * model_ * ta::vec4(vec, 1.f);
         auto rw = 1.f / v4.w();
         return ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
     });
 
     return result;
+}
+
+void Model::load_identity() noexcept
+{
+    model_ = ta::mat4(1.f);
+}
+
+void Model::rotare(const ta::vec3 &axis, float angle)
+{
+    model_ = ta::rotate(model_, axis, angle);
 }

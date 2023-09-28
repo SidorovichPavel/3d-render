@@ -28,7 +28,7 @@ namespace glfw
         pitch = 0.0f;
         yaw = -90.0f;
 
-        //glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
     Window::~Window()
@@ -116,7 +116,7 @@ namespace glfw
     void Window::cursor_pos_callback(float xpos, float ypos)
     {
         float xoffset = xpos - lastX;
-        float yoffset = lastY - ypos; // Обратный порядок вычитания потому что оконные Y-координаты возрастают с верху вниз
+        float yoffset = ypos - lastY; // Обратный порядок вычитания потому что оконные Y-координаты возрастают с верху вниз
         lastX = xpos;
         lastY = ypos;
 
