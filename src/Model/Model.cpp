@@ -77,19 +77,23 @@ unsigned int *Model::indices() noexcept
 std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexcept
 {
     std::vector<ta::vec3> result(vertices_.size());
-    auto transform = projection * view * model_;
+    auto transform = ta::transpose(projection * view * model_);
 
-    auto ceil = vertices_.size() / 6;
-    auto frac = vertices_.size() % 6;
     auto fnc = [](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator res_it, ta::mat4 trfm)
     {
         for (; first != last; ++first, ++res_it)
         {
-            auto v4 = trfm * ta::vec4(*first, 1.f);
+            auto v4 = ta::vec4(*first, 1.f) * trfm;
             auto rw = 1.f / v4.w();
             *res_it = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
         }
     };
+
+#ifdef NDEBUG
+
+    auto ceil = vertices_.size() / 6;
+    auto frac = vertices_.size() % 6;
+    
 
     std::list<std::future<void>> futures;
     for (int i = 0; i < 6; i++)
@@ -100,6 +104,12 @@ std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexc
 
     for (auto &&f : futures)
         f.get();
+
+#else
+
+    fnc(vertices_.begin(), vertices_.end(), result.begin(), transform);
+
+#endif
 
     return result;
 }
