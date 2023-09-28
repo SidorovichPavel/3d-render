@@ -76,9 +76,9 @@ std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexc
     std::vector<ta::vec3> result(vertices_.size());
 
     std::ranges::transform(vertices_, result.begin(), [&](ta::vec3 &vec) {
-        auto v4 = ta::vec4(vec, 1.f) * view * projection;
+        auto v4 = projection * view * ta::vec4(vec, 1.f);
         auto rw = 1.f / v4.w();
-        return ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw); 
+        return ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
     });
 
     return result;
