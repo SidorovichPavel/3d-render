@@ -2,6 +2,7 @@
 #include <string_view>
 
 #include <tinyalgebralib/math/math.hpp>
+#include <threadpoollib/threadpoollib.hpp>
 
 class Model
 {
@@ -30,5 +31,7 @@ private:
     std::vector<unsigned int> triangles_;
     std::vector<unsigned int> solid_ranges_;
 
+    threadpool::ThreadPool pool_;
     ta::mat4 model_;
+    
 };
