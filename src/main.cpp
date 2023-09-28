@@ -7,11 +7,22 @@
 #include <ranges>
 #include <algorithm>
 #include <memory>
+#include <chrono>
 
 #include <tinyalgebralib/math/math.hpp>
 
 #include "Model/Model.hpp"
 #include "Window/window.hpp"
+
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+
+struct Camera
+{
+    ta::vec3 pos, dir, up;
+};
+
+void do_movement(const glfw::Window &window, Camera &camera, float ms);
 
 int main()
 {
@@ -91,18 +102,26 @@ int main()
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
-    auto view = ta::look_at(
-        ta::vec3(0.f, 0.f, 200.f),
-        ta::vec3(0.f, 0.f, 0.f),
-        ta::vec3(0.f, 1.f, 0.f));
+    Camera camera;
+    camera.pos = ta::vec3(0.f, 0.f, 100.f);
+    camera.dir = ta::vec3(0.f, 0.f, -1.f);
+    camera.up = ta::vec3(0.f, 1.f, 0.f);
 
     // glGenBuffers(1, &EBO);
     // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     // glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices_sizeof(), model.indices(), GL_STATIC_DRAW);
 
+    auto time = std::chrono::steady_clock::now();
     // Рендеринг
     for (; !window->should_close();)
     {
+
+        glfwPollEvents();
+        auto tp = std::chrono::steady_clock::now();
+        auto dt = 1000.f / std::chrono::duration_cast<std::chrono::milliseconds>(time - tp).count();
+        time = tp;
+        do_movement(*window, camera, dt);
+
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -111,18 +130,19 @@ int main()
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
         auto projection = ta::perspective(ta::rad(120.f), window->get_ratio(), 1.f, 400.f);
+        auto tg = camera.pos + camera.dir;
+        auto view = ta::look_at(camera.pos, tg, camera.up);
 
         auto data = model.transform(view, projection);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void *)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
         glBufferData(GL_ARRAY_BUFFER, data.size() * 3 * sizeof(float), data.data(), GL_STREAM_DRAW);
         glEnableVertexAttribArray(0);
 
-        glDrawArrays(GL_TRIANGLES, 0, data.size());
+        glDrawArrays(GL_POINTS, 0, data.size());
         // glDrawElements(GL_TRIANGLES, model.indices_count(), GL_UNSIGNED_INT, nullptr);
 
         window->swap_buffers();
-        glfwPollEvents();
     }
 
     // Освобождение ресурсов
@@ -133,4 +153,28 @@ int main()
     // Завершение работы GLFW
     glfwTerminate();
     return 0;
+}
+
+void do_movement(const glfw::Window &window, Camera &camera, float ms)
+{
+    if (ms == INFINITY)
+        ms = 0.0001f;
+
+    decltype(auto) keys = window.get_keys_state();
+    auto [yaw, pitch] = window.get_angles();
+
+    camera.dir.x() = std::cos(ta::rad(pitch)) * std::cos(ta::rad(yaw));
+    camera.dir.y() = std::sin(ta::rad(pitch));
+    camera.dir.z() = std::cos(ta::rad(pitch)) * std::sin(ta::rad(yaw));
+
+    float cameraSpeed = 0.5f;
+
+    if (keys[GLFW_KEY_W])
+        camera.pos += cameraSpeed * camera.dir * ms;
+    if (keys[GLFW_KEY_S])
+        camera.pos -= cameraSpeed * camera.dir * ms;
+    if (keys[GLFW_KEY_A])
+        camera.pos -= ta::normalize(ta::cross(camera.dir, camera.up)) * cameraSpeed * ms;
+    if (keys[GLFW_KEY_D])
+        camera.pos += ta::normalize(ta::cross(camera.dir, camera.up)) * cameraSpeed * ms;
 }
