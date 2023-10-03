@@ -13,10 +13,10 @@ public:
 
     void load_from_file(std::string_view file);
     size_t vertex_count() const noexcept;
-    
+
     size_t indices_count() const noexcept;
     size_t indices_sizeof() const noexcept;
-    
+
     float* vdata() noexcept;
     unsigned int* indices() noexcept;
 
@@ -31,7 +31,7 @@ private:
     std::vector<unsigned int> triangles_;
     std::vector<unsigned int> solid_ranges_;
 
-    threadpool::ThreadPool pool_;
+    threadpool::threadpool pool_;
     ta::mat4 model_;
-    
+
 };

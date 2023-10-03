@@ -9,7 +9,7 @@
 
 Model::Model()
     : pool_(4),
-      model_(1.f)
+    model_(1.f)
 {
 }
 
@@ -24,22 +24,20 @@ void Model::load_from_file(std::string_view strv)
     {
         stl_reader::ReadStlFile(strv.data(), coords, normals, triangles_, solid_ranges_);
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         std::cerr << e.what() << std::endl;
     }
 
-    const size_t numTris = triangles_.size() / 3;
-    for (size_t itri = 0; itri < numTris; ++itri)
+    for (auto vit = coords.begin(),
+        nit = normals.begin();
+        vit != coords.end();)
     {
-        for (size_t icorner = 0; icorner < 3; ++icorner)
-        {
-            float *c = &coords[3 * triangles_[3 * itri + icorner]];
-            vertices_.emplace_back(c[0], c[1], c[2]);
+        vertices_.emplace_back(*vit, *(vit + 1), *(vit + 2));
+        normals_.emplace_back(*nit, *(nit + 1), *(nit + 2));
 
-            float *n = &normals[3 * triangles_[3 * itri + icorner]];
-            normals_.emplace_back(n[0], n[1], n[2]);
-        }
+        vit += 3;
+        nit += 3;
     }
 }
 
@@ -58,7 +56,7 @@ size_t Model::indices_sizeof() const noexcept
     return triangles_.size() * sizeof(unsigned int);
 }
 
-float *Model::vdata() noexcept
+float* Model::vdata() noexcept
 {
     if (vertices_.empty())
         return nullptr;
@@ -66,7 +64,7 @@ float *Model::vdata() noexcept
     return &vertices_[0][0];
 }
 
-unsigned int *Model::indices() noexcept
+unsigned int* Model::indices() noexcept
 {
     if (triangles_.empty())
         return nullptr;
@@ -80,20 +78,19 @@ std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexc
     auto transform = ta::transpose(projection * view * model_);
 
     auto fnc = [](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator res_it, ta::mat4 trfm)
-    {
-        for (; first != last; ++first, ++res_it)
         {
-            auto v4 = ta::vec4(*first, 1.f) * trfm;
-            auto rw = 1.f / v4.w();
-            *res_it = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
-        }
-    };
+            for (; first != last; ++first, ++res_it)
+            {
+                auto v4 = ta::vec4(*first, 1.f) * trfm;
+                auto rw = 1.f / v4.w();
+                *res_it = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
+            }
+        };
 
 #ifdef NDEBUG
 
     auto ceil = vertices_.size() / 6;
     auto frac = vertices_.size() % 6;
-    
 
     std::list<std::future<void>> futures;
     for (int i = 0; i < 6; i++)
@@ -102,7 +99,7 @@ std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexc
     if (frac != 0)
         fnc(vertices_.begin() + ceil * 6, vertices_.end(), result.begin() + ceil * 6, transform);
 
-    for (auto &&f : futures)
+    for (auto&& f : futures)
         f.get();
 
 #else
@@ -119,7 +116,7 @@ void Model::load_identity() noexcept
     model_ = ta::mat4(1.f);
 }
 
-void Model::rotare(const ta::vec3 &axis, float angle)
+void Model::rotare(const ta::vec3& axis, float angle)
 {
     model_ = ta::rotate(model_, axis, angle);
 }
