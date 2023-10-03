@@ -31,7 +31,7 @@ private:
     std::vector<unsigned int> triangles_;
     std::vector<unsigned int> solid_ranges_;
 
-    threadpool::threadpool pool_;
+    threadpool::datapool<std::vector<ta::vec3>::iterator, std::vector<ta::vec3>::iterator, std::vector<ta::vec3>::iterator, ta::mat4&> pool_;
     ta::mat4 model_;
 
 };

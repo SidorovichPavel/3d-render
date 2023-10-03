@@ -8,7 +8,16 @@
 #include "Model.hpp"
 
 Model::Model()
-    : pool_(4),
+    : pool_(4, [](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator res_it, ta::mat4& trfm)
+        {
+            for (; first != last; ++first, ++res_it)
+            {
+                auto v4 = ta::vec4(*first, 1.f) * trfm;
+                auto rw = 1.f / v4.w();
+
+                *res_it = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
+            }
+        }),
     model_(1.f)
 {
 }
@@ -75,36 +84,27 @@ unsigned int* Model::indices() noexcept
 std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexcept
 {
     std::vector<ta::vec3> result(vertices_.size());
-    auto transform = ta::transpose(projection * view * model_);
-
-    auto fnc = [](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator res_it, ta::mat4 trfm)
-        {
-            for (; first != last; ++first, ++res_it)
-            {
-                auto v4 = ta::vec4(*first, 1.f) * trfm;
-                auto rw = 1.f / v4.w();
-                *res_it = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
-            }
-        };
+    auto transform = model_ * view * projection;
 
 #ifdef NDEBUG
 
     auto ceil = vertices_.size() / 6;
     auto frac = vertices_.size() % 6;
 
-    std::list<std::future<void>> futures;
-    for (int i = 0; i < 6; i++)
-        futures.emplace_back(pool_.enqueue(fnc, vertices_.begin() + ceil * i, vertices_.begin() + ceil * (i + 1), result.begin() + ceil * i, transform));
+    for (size_t i = 0; i < 6; i++)
+    {
+        pool_.enqueue(vertices_.begin() + ceil * i, vertices_.begin() + ceil * (i + 1), result.begin() + ceil * i, transform);
+    }
 
     if (frac != 0)
-        fnc(vertices_.begin() + ceil * 6, vertices_.end(), result.begin() + ceil * 6, transform);
+        pool_.enqueue(vertices_.begin() + ceil * 6, vertices_.end(), result.begin() + ceil * 6, transform);
 
-    for (auto&& f : futures)
-        f.get();
+    pool_.wait();
 
 #else
 
-    fnc(vertices_.begin(), vertices_.end(), result.begin(), transform);
+    pool_.enqueue(vertices_.begin(), vertices_.end(), result.begin(), transform);
+    pool_.wait();
 
 #endif
 
