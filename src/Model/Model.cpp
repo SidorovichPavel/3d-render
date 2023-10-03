@@ -88,16 +88,16 @@ std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexc
 
 #ifdef NDEBUG
 
-    auto ceil = vertices_.size() / 6;
-    auto frac = vertices_.size() % 6;
+    auto ceil = vertices_.size() / block_count;
+    auto frac = vertices_.size() % block_count;
 
-    for (size_t i = 0; i < 6; i++)
+    for (size_t i = 0; i < block_count; i++)
     {
         pool_.enqueue(vertices_.begin() + ceil * i, vertices_.begin() + ceil * (i + 1), result.begin() + ceil * i, transform);
     }
 
     if (frac != 0)
-        pool_.enqueue(vertices_.begin() + ceil * 6, vertices_.end(), result.begin() + ceil * 6, transform);
+        pool_.enqueue(vertices_.begin() + ceil * block_count, vertices_.end(), result.begin() + ceil * block_count, transform);
 
     pool_.wait();
 
