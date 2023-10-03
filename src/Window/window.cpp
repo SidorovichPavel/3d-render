@@ -13,7 +13,11 @@ namespace glfw
     {
         window_ = glfwCreateWindow(width_, height_, title_.c_str(), nullptr, nullptr);
         if (!window_)
-            throw std::runtime_error("glfw::CreateWindow failed");
+        {
+            const char* desc;
+            glfwGetError(&desc);
+            throw std::runtime_error(desc);
+        }
 
         glfwSetWindowUserPointer(window_, this);
 
@@ -125,7 +129,7 @@ namespace glfw
         xoffset *= sensitivity;
         yoffset *= sensitivity;
 
-        yaw += xoffset;
+        yaw -= xoffset;
         pitch += yoffset;
 
         if (pitch > 89.0f)
