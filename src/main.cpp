@@ -113,6 +113,7 @@ int main()
     camera.dir = ta::vec3(-1.f, 0.f, 0.f);
     camera.up = ta::vec3(0.f, 1.f, 0.f);
 
+    model.translate(ta::vec3(0.f, 0.f, 100.f));
     //model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(90.f));
     auto time = std::chrono::steady_clock::now();
     // Рендеринг
@@ -133,7 +134,6 @@ int main()
         
         //auto v = glm::lookAt
         auto view = ta::look_at(camera.pos, camera.pos + camera.dir, camera.up);
-        view = ta::transpose(view);
         auto data = model.transform(view, projection);
 
         if (mk_dump)
@@ -202,6 +202,4 @@ void do_movement(const glfw::Window& window, Camera& camera, Model& model, float
         model.rotare(ta::vec3(0.f, 1.f, 0.f), ta::rad(15.0f * ms));
     if (keys[GLFW_KEY_RIGHT])
         model.rotare(ta::vec3(0.f, 1.f, 0.f), -ta::rad(15.0f * ms));
-
-    std::cout << camera.pos.to_string() << std::endl;
 }

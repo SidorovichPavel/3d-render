@@ -24,6 +24,7 @@ public:
 
     void load_identity() noexcept;
     void rotare(const ta::vec3& axis, float angle);
+    void translate(const ta::vec3& offset);
 
 private:
     std::vector<ta::vec3> vertices_;

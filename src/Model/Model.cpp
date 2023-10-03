@@ -12,7 +12,7 @@ Model::Model()
         {
             for (; first != last; ++first, ++res_it)
             {
-                auto v4 = ta::vec4(*first, 1.f) * trfm;
+                auto v4 = trfm * ta::vec4(*first, 1.f);
                 auto rw = 1.f / v4.w();
 
                 *res_it = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
@@ -84,7 +84,7 @@ unsigned int* Model::indices() noexcept
 std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexcept
 {
     std::vector<ta::vec3> result(vertices_.size());
-    auto transform = model_ * view * projection;
+    auto transform = projection * view * model_;
 
 #ifdef NDEBUG
 
@@ -119,4 +119,9 @@ void Model::load_identity() noexcept
 void Model::rotare(const ta::vec3& axis, float angle)
 {
     model_ = ta::rotate(model_, axis, angle);
+}
+
+void Model::translate(const ta::vec3& offset)
+{
+    model_ = ta::translate(model_, offset);
 }
