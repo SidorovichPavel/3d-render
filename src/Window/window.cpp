@@ -5,10 +5,11 @@
 
 namespace glfw
 {
-    Window::Window(const std::string &title, int width, int height) noexcept
-        : title_(title),
-          width_(width),
-          height_(height)
+    Window::Window(const std::string& title, int width, int height) noexcept
+        :
+        title_(title),
+        width_(width),
+        height_(height)
     {
         window_ = glfwCreateWindow(width_, height_, title_.c_str(), nullptr, nullptr);
         if (!window_)
@@ -55,7 +56,7 @@ namespace glfw
         return static_cast<float>(width_) / static_cast<float>(height_);
     }
 
-    const std::array<bool, 1024> &Window::get_keys_state() const noexcept
+    const std::array<bool, 1024>& Window::get_keys_state() const noexcept
     {
         return keys_;
     }
@@ -69,23 +70,23 @@ namespace glfw
     /* STATIC MEMBERS */
     /*--------------------------------------------------------------------------------------------------------------------*/
 
-    void Window::static_key_callback(GLFWwindow *window, int key, int scancode, int action, int mode)
+    void Window::static_key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
     {
-        auto obj_ptr = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+        auto obj_ptr = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
         if (obj_ptr)
             obj_ptr->key_callback(key, scancode, action, mode);
     }
 
-    void Window::static_framebuffer_size_callback(GLFWwindow *window, int width, int height)
+    void Window::static_framebuffer_size_callback(GLFWwindow* window, int width, int height)
     {
-        auto obj_ptr = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+        auto obj_ptr = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
         if (obj_ptr)
             obj_ptr->framebuffer_size_callback(width, height);
     }
 
-    void Window::static_cursor_pos_callback(GLFWwindow *window, double xpos, double ypos)
+    void Window::static_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
     {
-        auto obj_ptr = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+        auto obj_ptr = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
         if (obj_ptr)
             obj_ptr->cursor_pos_callback(static_cast<float>(xpos), static_cast<float>(ypos));
     }
