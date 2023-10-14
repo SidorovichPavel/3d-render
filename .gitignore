@@ -13,6 +13,7 @@ CMakeCache.txt
 /stl_reader
 /tinyalgebralib
 /threadpoollib
+/glfwextlib
 
 # resources
 /resources
