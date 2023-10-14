@@ -8,14 +8,14 @@
 #include "Model.hpp"
 
 Model::Model()
-    : pool_(4, [](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator res_it, ta::mat4& trfm)
+    : pool_(4, [](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator res, ta::mat4& trfm)
         {
-            for (; first != last; ++first, ++res_it)
+            for (; first != last; ++first, ++res)
             {
                 auto v4 = trfm * ta::vec4(*first, 1.f);
                 auto rw = 1.f / v4.w();
 
-                *res_it = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
+                *res = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
             }
         }),
     model_(1.f)
@@ -114,6 +114,11 @@ std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexc
 void Model::load_identity() noexcept
 {
     model_ = ta::mat4(1.f);
+}
+
+void Model::scale(const ta::vec3& size)
+{
+    model_ = ta::scale(model_, size);
 }
 
 void Model::rotare(const ta::vec3& axis, float angle)

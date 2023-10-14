@@ -23,6 +23,7 @@ public:
     std::vector<ta::vec3> transform(ta::mat4 view, ta::mat4 projection) noexcept;
 
     void load_identity() noexcept;
+    void scale(const ta::vec3& size);
     void rotare(const ta::vec3& axis, float angle);
     void translate(const ta::vec3& offset);
 
