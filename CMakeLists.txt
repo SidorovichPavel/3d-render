@@ -16,13 +16,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 23 CXX_STANDARD_RE
 include_directories(stl_reader)
 
 add_subdirectory(glfwextlib)
+add_subdirectory(glewextlib)
 add_subdirectory(tinyalgebralib)
 add_subdirectory(threadpoollib)
 
 target_link_libraries(${PROJECT_NAME} 
     glfwextlib
-    GLEW
-    OpenGL
+    glewextlib
     tinyalgebralib
     threadpoollib
     )
