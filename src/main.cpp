@@ -17,47 +17,8 @@
 
 #include "Model/Model.hpp"
 
-const char* vertexShaderSource = R"(
-    #version 330 core
-    layout (location = 0) in vec3 position;
-    layout (location = 1) in vec3 color;
-    layout (location = 2) in vec2 tex_vertex;
-
-    out vec3 fcolor;
-    out vec2 ftex_vertex;
-
-    void main()
-    {
-        gl_Position = vec4(position.x, position.y, position.z, 1.0);
-        fcolor = color;
-        ftex_vertex = tex_vertex;
-    }
-)";
-
-const char* fragmentShaderSource = R"(
-    #version 330 core
-    in vec3 fcolor;
-    in vec2 ftex_vertex;
-
-    out vec4 FragColor;
-    
-    uniform sampler2D ftexture;
-
-    void main()
-    {
-        FragColor = texture(ftexture, ftex_vertex);
-    }
-)";
-
-
-struct Camera
-{
-    ta::vec3 pos, dir, up;
-};
-
-void do_movement(const glfwext::Window& window, Camera& camera, Model& model, float yaw, float pitch, float ms);
-std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vector<ta::vec3>& transformed_vertices);
-
+void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float ms);
+std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vector<ta::vec3>& transformed_vertices, threadpool::threadpool& pool);
 
 int main()
 {
@@ -111,6 +72,7 @@ int main()
 
     pitch = 0.0f;
     yaw = 180.0f;
+    ta::Camera camera(ta::vec3(300.f, 0.f, 0.f), ta::vec3(0.f, 0.f, 0.f), ta::vec3(0.f, 1.f, 0.f));
 
     window->cursor_move += [&](glfwext::Window*, float xpos, float ypos) {
         if (!mouse_input)
@@ -249,7 +211,7 @@ int main()
 
         auto viewport = ta::viewport(0, 0, width, height);
 
-        auto pixels = apply_viewport(viewport, tdata);
+        auto pixels = apply_viewport(viewport, tdata, pool);
 
         // Bind Texture
         if (image.size() != width * height)
@@ -258,13 +220,37 @@ int main()
         for (auto& c : image)
             c = bgd_color * 2;
 
-        for (auto pxl : pixels)
+        for (auto i : std::views::iota(0u, indices.size() / 3))
         {
-            if ((pxl.x() >= width || pxl.y() >= height) &&
-                (pxl.x() > 0 || pxl.y() < 0))
-                continue;
+            auto tv1 = indices[i * 3 + 0],
+                tv2 = indices[i * 3 + 1],
+                tv3 = indices[i * 3 + 2];
 
-            image[pxl.y() * width + pxl.x()] = ta::vec3(1.f);
+            auto v1 = pixels[tv1],
+                v2 = pixels[tv2],
+                v3 = pixels[tv3];
+
+            auto dda = [&](ta::vec2i u, ta::vec2i v)
+                {
+                    int l = static_cast<int>(std::max(v.x() - u.x(), v.y() - u.y()));
+                    l = std::abs(l);
+                    float dx = static_cast<float>(v.x() - u.x()) / l;
+                    float dy = static_cast<float>(v.y() - u.y()) / l;
+
+                    for (auto step : std::views::iota(0, l))
+                    {
+                        auto x = static_cast<int>(u.x() + dx * step),
+                            y = static_cast<int>(u.y() + dy * step);
+
+                        auto cx = std::clamp(x, 0, width - 1),
+                            cy = std::clamp(y, 0, height - 1);
+                        image[cy * width + cx] = ta::vec3(1.f);
+                    }
+                };
+
+            dda(v1, v2);
+            dda(v2, v3);
+            dda(v3, v1);
         }
 
         std::apply(glClearColor, bgd_tuple_color);
@@ -283,7 +269,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, 0);
 
         window->swap_buffers();
-        std::cout << 1000.f / std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
+        //std::cout << 1000.f / std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
     }
 
     // Освобождение ресурсов

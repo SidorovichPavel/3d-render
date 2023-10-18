@@ -81,34 +81,58 @@ unsigned int* Model::indices() noexcept
     return triangles_.data();
 }
 
-std::vector<ta::vec3> Model::transform(ta::mat4 view, ta::mat4 projection) noexcept
+std::tuple<std::vector<ta::vec3>, std::vector<uint32_t>> Model::transform(ta::mat4 view, ta::mat4 projection) noexcept
 {
     std::vector<ta::vec3> result(vertices_.size());
     auto transform = projection * view * model_;
 
-#ifdef NDEBUG
+    std::ranges::transform(vertices_, result.begin(), [&](const ta::vec3& vec) {
+        auto v4 = transform * ta::vec4(vec, 1.f);
+        v4 /= v4.w();
 
-    auto ceil = vertices_.size() / block_count;
-    auto frac = vertices_.size() % block_count;
+        return ta::vec3(v4);
+        });
 
-    for (size_t i = 0; i < block_count; i++)
+    return std::make_tuple(result, triangles_);
+}
+
+std::tuple<std::vector<ta::vec3>, std::vector<uint32_t>> Model::transform(ta::mat4 view, ta::mat4 projection, threadpool::threadpool& pool) noexcept
+{
+    std::vector<ta::vec3> result(vertices_.size());
+    auto transform = projection * view * model_;
+
+    auto chunk_size = vertices_.size() / chunk_count;
+
+    auto fn = [&](const ta::vec3& vec) {
+        auto v4 = transform * ta::vec4(vec, 1.f);
+        v4 /= v4.w();
+
+        return ta::vec3(v4);
+        };
+
+    auto math = [&fn](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator result) -> void
+        {
+            std::transform(first, last, result, fn);
+        };
+
+    std::vector<std::future<void>> tasks_res;
+    auto begin = vertices_.begin();
+    auto dest = result.begin();
+
+    for (auto i : std::views::iota(0u, chunk_count))
     {
-        pool_.enqueue(vertices_.begin() + ceil * i, vertices_.begin() + ceil * (i + 1), result.begin() + ceil * i, transform);
+        auto end = begin + chunk_size;
+        tasks_res.emplace_back(pool.enqueue(math, begin, end, dest));
+        begin = end;
+        dest += chunk_size;
     }
 
-    if (frac != 0)
-        pool_.enqueue(vertices_.begin() + ceil * block_count, vertices_.end(), result.begin() + ceil * block_count, transform);
+    std::transform(begin, vertices_.end(), dest, fn);
 
-    pool_.wait();
+    for (auto&& f : tasks_res)
+        f.get();
 
-#else
-
-    pool_.enqueue(vertices_.begin(), vertices_.end(), result.begin(), transform);
-    pool_.wait();
-
-#endif
-
-    return result;
+    return std::make_tuple(result, triangles_);
 }
 
 void Model::load_identity() noexcept

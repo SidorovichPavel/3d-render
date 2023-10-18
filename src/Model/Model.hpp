@@ -20,7 +20,10 @@ public:
     float* vdata() noexcept;
     unsigned int* indices() noexcept;
 
-    std::vector<ta::vec3> transform(ta::mat4 view, ta::mat4 projection) noexcept;
+    /* return vertex data and indices data */
+    std::tuple<std::vector<ta::vec3>, std::vector<uint32_t>> transform(ta::mat4 view, ta::mat4 projection) noexcept;
+    /* return vertex data and indices data */
+    std::tuple<std::vector<ta::vec3>, std::vector<uint32_t>> transform(ta::mat4 view, ta::mat4 projection, threadpool::threadpool& pool) noexcept;
 
     void load_identity() noexcept;
     void scale(const ta::vec3& size);
