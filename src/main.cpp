@@ -13,6 +13,7 @@
 #include <numeric>
 
 #include <tinyalgebralib/math/math.hpp>
+#include <tinyalgebralib/Camera.hpp>
 #include <glfwextlib/Window.hpp>
 
 #include "Model/Model.hpp"
