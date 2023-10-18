@@ -33,11 +33,10 @@ public:
 private:
     std::vector<ta::vec3> vertices_;
     std::vector<ta::vec3> normals_;
-    std::vector<unsigned int> triangles_;
-    std::vector<unsigned int> solid_ranges_;
+    std::vector<uint32_t> triangles_;
+    std::vector<uint32_t> solid_ranges_;
 
-    threadpool::datapool<std::vector<ta::vec3>::iterator, std::vector<ta::vec3>::iterator, std::vector<ta::vec3>::iterator, ta::mat4&> pool_;
-    static constexpr size_t block_count = 8;
+    static constexpr size_t chunk_count = 8;
     ta::mat4 model_;
 
 };

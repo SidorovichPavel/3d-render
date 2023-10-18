@@ -8,16 +8,7 @@
 #include "Model.hpp"
 
 Model::Model()
-    : pool_(4, [](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator res, ta::mat4& trfm)
-        {
-            for (; first != last; ++first, ++res)
-            {
-                auto v4 = trfm * ta::vec4(*first, 1.f);
-                auto rw = 1.f / v4.w();
-
-                *res = ta::vec3(v4.x() * rw, v4.y() * rw, v4.z() * rw);
-            }
-        }),
+    :
     model_(1.f)
 {
 }

@@ -14,73 +14,75 @@
 
 #include <tinyalgebralib/math/math.hpp>
 #include <tinyalgebralib/Camera.hpp>
+#include <glfwextlib/glfwext.hpp>
 #include <glfwextlib/Window.hpp>
+#include <glewextlib/glewext.hpp>
+#include <glewextlib/Shader.hpp>
 
 #include "Model/Model.hpp"
 
 void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float ms);
-std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vector<ta::vec3>& transformed_vertices, threadpool::threadpool& pool);
+std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vector<ta::vec3>& vertices, threadpool::threadpool& pool);
 
 int main()
 {
-    // Инициализация GLFW
-    if (!glfwInit())
-    {
-        std::cerr << "Ошибка инициализации GLFW" << std::endl;
-        return -1;
-    }
+    std::string_view vshader("/mnt/sata0/Workshop/3d-render/resources/glsl/main.vert");
+    std::string_view fshader("/mnt/sata0/Workshop/3d-render/resources/glsl/main.frag");
 
     ta::vec2i screen_size{ 1280, 720 };
-
     std::unique_ptr<glfwext::Window> window;
+    std::unique_ptr<glewext::Shader> main_shader;
     try
     {
+        glfwext::init(); // init GLFW3
         window = std::make_unique<glfwext::Window>("GLFW Window", screen_size.x(), screen_size.y());
+        window->make_current(); // make current gl context
+        glewext::init(); // init glew
+        main_shader = std::make_unique<glewext::Shader>(vshader, fshader);
     }
     catch (std::exception& e)
     {
         std::cerr << e.what() << std::endl;
     }
-    window->make_current();
 
     window->framebuffer_resize += [](glfwext::Window* window, int width, int height) {
         glViewport(0, 0, width, height);
         };
 
     bool mouse_input = false;
+    float lastX, lastY;
+    float pitch;
+    float yaw;
 
-    window->key_press += [&mouse_input](glfwext::Window* window, int key, int scancode, int mode) {
+    window->key_press += [&](glfwext::Window* window, int key, int scancode, int mode) {
         if (key == GLFW_KEY_TAB)
         {
             mouse_input = !mouse_input;
             if (mouse_input)
+            {
                 window->set_input_mode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                std::tie(lastX, lastY) = window->get_cursor_pos();
+            }
             else
                 window->set_input_mode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
         };
+
     window->key_press += [](glfwext::Window* window, int key, int scancode, int mode) {
         if (key == GLFW_KEY_ESCAPE)
             window->set_should_close(true);
         };
 
-    float lastX, lastY;
-    float pitch;
-    float yaw;
-
-    lastX = 400;
-    lastY = 300;
-
     pitch = 0.0f;
     yaw = 180.0f;
-    ta::Camera camera(ta::vec3(300.f, 0.f, 0.f), ta::vec3(0.f, 0.f, 0.f), ta::vec3(0.f, 1.f, 0.f));
+    ta::Camera camera(ta::vec3(390.f, 0.f, 0.f), ta::vec3(0.f, 0.f, 0.f), ta::vec3(0.f, 1.f, 0.f));
 
     window->cursor_move += [&](glfwext::Window*, float xpos, float ypos) {
         if (!mouse_input)
             return;
 
         float xoffset = xpos - lastX;
-        float yoffset = ypos - lastY; // Обратный порядок вычитания потому что оконные Y-координаты возрастают с верху вниз
+        float yoffset = ypos - lastY;
         lastX = xpos;
         lastY = ypos;
 
@@ -88,45 +90,10 @@ int main()
         xoffset *= sensitivity;
         yoffset *= sensitivity;
 
-        yaw += xoffset;
-        pitch += yoffset;
-
-        if (pitch > 89.0f)
-            pitch = 89.0f;
-        if (pitch < -89.0f)
-            pitch = -89.0f;
+        camera.update_angles(yoffset, xoffset, 0.f);
         };
 
-    // Инициализация GLEW
-    if (glewInit() != GLEW_OK)
-    {
-        std::cerr << "Ошибка инициализации GLEW" << std::endl;
-        return -1;
-    }
-
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-    glCompileShader(vertexShader);
-
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-    glCompileShader(fragmentShader);
-
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    int success;
-    char infoLog[512];
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    threadpool::threadpool pool(12);
 
     float vertices[] = {
         // Positions          // Colors           // Texture Coords
@@ -180,17 +147,10 @@ int main()
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0); // Unbind texture when done, so we won't accidentily mess up our texture.
 
-    Camera camera;
-    camera.pos = ta::vec3(350.f, 0.f, 0.f);
-    camera.dir = ta::vec3(-1.f, 0.f, 0.f);
-    camera.up = ta::vec3(0.f, 1.f, 0.f);
-
     std::string_view filename("/mnt/sata0/Workshop/3d-render/resources/models/hyperion.stl");
     Model model;
     model.load_from_file(filename);
-    model.scale(ta::vec3(2.f));
-    model.translate(ta::vec3(0.f, 0.f, 100.f));
-    model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(90.f));
+    //model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(90.f));
 
     auto time = std::chrono::steady_clock::now();
 
@@ -200,15 +160,15 @@ int main()
 
         glfwPollEvents();
         auto tp = std::chrono::steady_clock::now();
-        auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(time - tp).count() / 1000.f;
+        auto frame_time = std::chrono::duration_cast<std::chrono::milliseconds>(time - tp).count() / 1000.f;
         time = tp;
 
-        do_movement(*window, camera, model, yaw, pitch, dt);
+        do_movement(*window, camera, model, frame_time);
 
         auto projection = ta::perspective(ta::rad(90.f), window->ratio(), .1f, 500.f);
-        auto view = ta::look_at(camera.pos, camera.pos + camera.dir, camera.up);
+        auto view = camera.get_view();
         auto [width, height] = window->size();
-        auto tdata = model.transform(view, projection);
+        auto [tdata, indices] = model.transform(view, projection);
 
         auto viewport = ta::viewport(0, 0, width, height);
 
@@ -233,10 +193,12 @@ int main()
 
             auto dda = [&](ta::vec2i u, ta::vec2i v)
                 {
-                    int l = static_cast<int>(std::max(v.x() - u.x(), v.y() - u.y()));
+                    auto distx = v.x() - u.x(),
+                        disty = v.y() - u.y();
+                    int l = static_cast<int>(std::max(std::abs(distx), std::abs(disty)));
                     l = std::abs(l);
-                    float dx = static_cast<float>(v.x() - u.x()) / l;
-                    float dy = static_cast<float>(v.y() - u.y()) / l;
+                    float dx = static_cast<float>(distx) / l;
+                    float dy = static_cast<float>(disty) / l;
 
                     for (auto step : std::views::iota(0, l))
                     {
@@ -261,7 +223,7 @@ int main()
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, image.data());
         glGenerateMipmap(GL_TEXTURE_2D);
         // Activate shader
-        glUseProgram(shaderProgram);
+        main_shader->use();
 
         // Draw container
         glBindVertexArray(VAO);
@@ -270,7 +232,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, 0);
 
         window->swap_buffers();
-        //std::cout << 1000.f / std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
+        std::cout << 1000.f / std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
     }
 
     // Освобождение ресурсов
@@ -278,35 +240,29 @@ int main()
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
 
-    glDeleteProgram(shaderProgram);
-
     // Завершение работы GLFW
     glfwTerminate();
     return 0;
 }
 
-void do_movement(const glfwext::Window& window, Camera& camera, Model& model, float yaw, float pitch, float ms)
+void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float ms)
 {
     if (ms == INFINITY)
         ms = 0.0001f;
 
     decltype(auto) keys = window.keys_state();
 
-    camera.dir.x() = std::cos(ta::rad(pitch)) * std::cos(ta::rad(yaw));
-    camera.dir.y() = std::sin(ta::rad(pitch));
-    camera.dir.z() = std::cos(ta::rad(pitch)) * std::sin(ta::rad(yaw));
-    camera.dir = ta::normalize(camera.dir);
-
     float cameraSpeed = 200.f;
 
     if (keys[GLFW_KEY_W])
-        camera.pos += cameraSpeed * -camera.dir * ms;
+        camera.move_front(-cameraSpeed * ms);
     if (keys[GLFW_KEY_S])
-        camera.pos -= cameraSpeed * -camera.dir * ms;
+        camera.move_back(-cameraSpeed * ms);
     if (keys[GLFW_KEY_A])
-        camera.pos -= ta::normalize(ta::cross(camera.up, camera.dir)) * cameraSpeed * ms;
+        camera.move_left(cameraSpeed * ms);
     if (keys[GLFW_KEY_D])
-        camera.pos += ta::normalize(ta::cross(camera.up, camera.dir)) * cameraSpeed * ms;
+        camera.move_right(cameraSpeed * ms);
+
     if (keys[GLFW_KEY_UP])
         model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(15.0f * ms));
     if (keys[GLFW_KEY_DOWN])
@@ -317,20 +273,40 @@ void do_movement(const glfwext::Window& window, Camera& camera, Model& model, fl
         model.rotare(ta::vec3(0.f, 1.f, 0.f), -ta::rad(15.0f * ms));
 }
 
-std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vector<ta::vec3>& transformed_vertices)
+std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vector<ta::vec3>& vertices, threadpool::threadpool& pool)
 {
-    std::vector<ta::vec2i> result;
+    std::vector<ta::vec2i> result(vertices.size());
 
-    for (auto& v : transformed_vertices)
+    constexpr size_t chunk_count = 8u;
+    size_t chunk_size = vertices.size() / chunk_count;
+
+    auto fn = [&](const ta::vec3& vec) {
+        auto v4 = viewport * ta::vec4(vec, 1.f);
+
+        return ta::vec2i(static_cast<int>(v4.x()), static_cast<int>(v4.y()));
+        };
+
+    auto math = [&fn](std::vector<ta::vec3>::const_iterator first, const std::vector<ta::vec3>::const_iterator last, std::vector<ta::vec2i>::iterator result) -> void
+        {
+            std::transform(first, last, result, fn);
+        };
+
+    std::vector<std::future<void>> tasks_res;
+    auto begin = vertices.begin();
+    auto dest = result.begin();
+
+    for (auto i : std::views::iota(0u, chunk_count))
     {
-        if (std::abs(v.x()) - 1.f > std::numeric_limits<float>::epsilon() ||
-            std::abs(v.y()) - 1.f > std::numeric_limits<float>::epsilon() ||
-            std::abs(v.z()) - 1.f > std::numeric_limits<float>::epsilon())
-            continue;
-
-        auto vtx = viewport * ta::vec4(v, 1.f);
-        result.emplace_back(static_cast<int>(vtx.x()), static_cast<int>(vtx.y()));
+        auto end = begin + chunk_size;
+        tasks_res.emplace_back(pool.enqueue(math, begin, end, dest));
+        begin = end;
+        dest += chunk_size;
     }
+
+    std::transform(begin, vertices.end(), dest, fn);
+
+    for (auto&& f : tasks_res)
+        f.get();
 
     return result;
 }
