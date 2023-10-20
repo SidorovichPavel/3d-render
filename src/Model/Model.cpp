@@ -94,34 +94,12 @@ std::tuple<std::vector<ta::vec3>, std::vector<uint32_t>> Model::transform(ta::ma
 
     auto chunk_size = vertices_.size() / chunk_count;
 
-    auto fn = [&](const ta::vec3& vec) {
+    pool.transform(vertices_, result.begin(), [transform](const ta::vec3& vec) {
         auto v4 = transform * ta::vec4(vec, 1.f);
         v4 /= v4.w();
 
         return ta::vec3(v4);
-        };
-
-    auto math = [&fn](std::vector<ta::vec3>::iterator first, std::vector<ta::vec3>::iterator last, std::vector<ta::vec3>::iterator result) -> void
-        {
-            std::transform(first, last, result, fn);
-        };
-
-    std::vector<std::future<void>> tasks_res;
-    auto begin = vertices_.begin();
-    auto dest = result.begin();
-
-    for (auto i : std::views::iota(0u, chunk_count))
-    {
-        auto end = begin + chunk_size;
-        tasks_res.emplace_back(pool.enqueue(math, begin, end, dest));
-        begin = end;
-        dest += chunk_size;
-    }
-
-    std::transform(begin, vertices_.end(), dest, fn);
-
-    for (auto&& f : tasks_res)
-        f.get();
+        });
 
     return std::make_tuple(result, triangles_);
 }

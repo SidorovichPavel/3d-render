@@ -1,5 +1,4 @@
 #include <GL/glew.h>
-#include <GLFW/glfw3.h>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -51,8 +50,6 @@ int main()
 
     bool mouse_input = false;
     float lastX, lastY;
-    float pitch;
-    float yaw;
 
     window->key_press += [&](glfwext::Window* window, int key, int scancode, int mode) {
         if (key == GLFW_KEY_TAB)
@@ -73,8 +70,6 @@ int main()
             window->set_should_close(true);
         };
 
-    pitch = 0.0f;
-    yaw = 180.0f;
     ta::Camera camera(ta::vec3(390.f, 0.f, 0.f), ta::vec3(0.f, 0.f, 0.f), ta::vec3(0.f, 1.f, 0.f));
 
     window->cursor_move += [&](glfwext::Window*, float xpos, float ypos) {
@@ -195,18 +190,24 @@ int main()
                 {
                     auto distx = v.x() - u.x(),
                         disty = v.y() - u.y();
-                    int l = static_cast<int>(std::max(std::abs(distx), std::abs(disty)));
-                    l = std::abs(l);
-                    float dx = static_cast<float>(distx) / l;
-                    float dy = static_cast<float>(disty) / l;
 
-                    for (auto step : std::views::iota(0, l))
+                    auto l = static_cast<size_t>(std::max(std::abs(distx), std::abs(disty)));
+                    if (l > 2000)
+                        return;
+
+                    ta::vec2 d(static_cast<float>(distx) / l, static_cast<float>(disty) / l);
+
+                    ta::vec2 pos = u;
+
+                    for (auto step : std::views::iota(0u, l))
                     {
-                        auto x = static_cast<int>(u.x() + dx * step),
-                            y = static_cast<int>(u.y() + dy * step);
+                        auto x = static_cast<int>(pos.x()),
+                            y = static_cast<int>(pos.y());
+                        pos += d;
 
                         auto cx = std::clamp(x, 0, width - 1),
                             cy = std::clamp(y, 0, height - 1);
+
                         image[cy * width + cx] = ta::vec3(1.f);
                     }
                 };
@@ -232,7 +233,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, 0);
 
         window->swap_buffers();
-        std::cout << 1000.f / std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
+        //std::cout << /* 1000.f / */ std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
     }
 
     // Освобождение ресурсов
@@ -277,36 +278,13 @@ std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vecto
 {
     std::vector<ta::vec2i> result(vertices.size());
 
-    constexpr size_t chunk_count = 8u;
-    size_t chunk_size = vertices.size() / chunk_count;
-
-    auto fn = [&](const ta::vec3& vec) {
-        auto v4 = viewport * ta::vec4(vec, 1.f);
-
-        return ta::vec2i(static_cast<int>(v4.x()), static_cast<int>(v4.y()));
-        };
-
-    auto math = [&fn](std::vector<ta::vec3>::const_iterator first, const std::vector<ta::vec3>::const_iterator last, std::vector<ta::vec2i>::iterator result) -> void
+    pool.transform(vertices, result.begin(),
+        [&](const ta::vec3& vec)
         {
-            std::transform(first, last, result, fn);
-        };
+            auto v4 = viewport * ta::vec4(vec, 1.f);
 
-    std::vector<std::future<void>> tasks_res;
-    auto begin = vertices.begin();
-    auto dest = result.begin();
-
-    for (auto i : std::views::iota(0u, chunk_count))
-    {
-        auto end = begin + chunk_size;
-        tasks_res.emplace_back(pool.enqueue(math, begin, end, dest));
-        begin = end;
-        dest += chunk_size;
-    }
-
-    std::transform(begin, vertices.end(), dest, fn);
-
-    for (auto&& f : tasks_res)
-        f.get();
+            return ta::vec2i(static_cast<int>(v4.x()), static_cast<int>(v4.y()));
+        });
 
     return result;
 }
