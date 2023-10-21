@@ -22,7 +22,7 @@
 
 #include "Model/Model.hpp"
 
-std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> normal_calling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices);
+std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices);
 void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float ms);
 
 int main()
@@ -179,12 +179,12 @@ int main()
         auto view = camera.get_view();
         auto [tvertices, tindices] = model.transform(view, projection);
 
-        auto [ncindices, ncvertices] = normal_calling(tindices, tvertices);
+        auto [vfc_indices, vfc_vertices] = view_frustum_culling(tindices, tvertices);
 
         auto [width, height] = window->framebuffer_size();
         auto viewport = ta::viewport(0, 0, width, height);
         
-        pool.transform(ncvertices, ncvertices.begin(), [&](const ta::vec3& vec) { return (viewport * ta::vec4(vec, 1.f)).swizzle<0, 1, 2>(); });
+        pool.transform(vfc_vertices, vfc_vertices.begin(), [&](const ta::vec3& vec) { return (viewport * ta::vec4(vec, 1.f)).swizzle<0, 1, 2>(); });
 
         // Bind Texture
         if (image.size() != width * height)
@@ -193,11 +193,11 @@ int main()
         for (auto& c : image)
             c = bgd_color * 2;
 
-        for (auto&& tri : ncindices | std::views::chunk(3))
+        for (auto&& tri : vfc_indices | std::views::chunk(3))
         {
-            auto v1 = ncvertices[tri[0]],
-                v2 = ncvertices[tri[1]],
-                v3 = ncvertices[tri[2]];
+            auto v1 = vfc_vertices[tri[0]],
+                v2 = vfc_vertices[tri[1]],
+                v3 = vfc_vertices[tri[2]];
 
             auto dda = [&](ta::vec3 u, ta::vec3 v)
                 {
@@ -285,7 +285,7 @@ void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model
         model.rotare(ta::vec3(0.f, 1.f, 0.f), -ta::rad(15.0f * ms));
 }
 
-std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> normal_calling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
+std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
 {
     std::vector<uint32_t>resi;
     std::vector<ta::vec3>resv;
@@ -310,5 +310,5 @@ std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> normal_calling(std::vec
         }
     }
 
-    return std::make_tuple(resi, vertices);
+    return std::make_tuple(resi, std::move(vertices));
 }
