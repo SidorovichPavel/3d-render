@@ -52,6 +52,7 @@ int main()
 
     bool mouse_input = false;
     float lastX, lastY;
+    float fovy = 90.f;
 
     window->key_press += [&](glfwext::Window* window, int key, int scancode, int mode) {
         if (key == GLFW_KEY_TAB)
@@ -70,6 +71,18 @@ int main()
     window->key_press += [](glfwext::Window* window, int key, int scancode, int mode) {
         if (key == GLFW_KEY_ESCAPE)
             window->set_should_close(true);
+        };
+
+    window->scroll += [&](glfwext::Window* window, float xoffset, float yoffset)
+        {
+            if (!mouse_input)
+                return;
+
+            fovy += yoffset;
+            if (fovy > 120.f)
+                fovy = 120.f;
+            if (fovy < 60.f)
+                fovy = 60.f;
         };
 
     ta::Camera camera(ta::vec3(390.f, 0.f, 0.f), ta::vec3(0.f, 0.f, 0.f), ta::vec3(0.f, 1.f, 0.f));
@@ -161,14 +174,14 @@ int main()
 
         do_movement(*window, camera, model, frame_time);
 
-        auto projection = ta::perspective(ta::rad(90.f), window->ratio(), .1f, 500.f);
+        auto projection = ta::perspective(ta::rad(fovy), window->ratio(), .1f, 500.f);
         auto view = camera.get_view();
-        auto [width, height] = window->framebuffer_size();
-        auto [tdata, indices] = model.transform(view, projection);
+        auto [tdata, tindices] = model.transform(view, projection);
 
+        auto [width, height] = window->framebuffer_size();
         auto viewport = ta::viewport(0, 0, width, height);
 
-        auto pixels = apply_viewport(viewport, tdata, pool);
+        pool.transform(tdata, tdata.begin(), [&](const ta::vec3& vec) { return (viewport * ta::vec4(vec, 1.f)).swizzle<0, 1, 2>(); });
 
         // Bind Texture
         if (image.size() != width * height)
@@ -177,17 +190,17 @@ int main()
         for (auto& c : image)
             c = bgd_color * 2;
 
-        for (auto i : std::views::iota(0u, indices.size() / 3))
+        for (auto i : std::views::iota(0u, tindices.size() / 3))
         {
-            auto tv1 = indices[i * 3 + 0],
-                tv2 = indices[i * 3 + 1],
-                tv3 = indices[i * 3 + 2];
+            auto tv1 = tindices[i * 3 + 0],
+                tv2 = tindices[i * 3 + 1],
+                tv3 = tindices[i * 3 + 2];
 
-            auto v1 = pixels[tv1],
-                v2 = pixels[tv2],
-                v3 = pixels[tv3];
+            auto v1 = tdata[tv1],
+                v2 = tdata[tv2],
+                v3 = tdata[tv3];
 
-            auto dda = [&](ta::vec2i u, ta::vec2i v)
+            auto dda = [&](ta::vec3 u, ta::vec3 v)
                 {
                     auto distx = v.x() - u.x(),
                         disty = v.y() - u.y();
@@ -196,15 +209,13 @@ int main()
                     if (l > 2000)
                         return;
 
-                    ta::vec2 d(static_cast<float>(distx) / l, static_cast<float>(disty) / l);
-
-                    ta::vec2 pos = u;
+                    ta::vec3 d(distx / l, disty / l, 0.f);
 
                     for (auto step : std::views::iota(0u, l))
                     {
-                        auto x = static_cast<int>(pos.x()),
-                            y = static_cast<int>(pos.y());
-                        pos += d;
+                        auto x = static_cast<int>(u.x()),
+                            y = static_cast<int>(u.y());
+                        u += d;
 
                         auto cx = std::clamp(x, 0, width - 1),
                             cy = std::clamp(y, 0, height - 1);
