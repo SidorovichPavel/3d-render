@@ -22,6 +22,7 @@
 
 #include "Model/Model.hpp"
 
+std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> normal_calling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices);
 void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float ms);
 
 int main()
@@ -115,6 +116,7 @@ int main()
         0, 1, 3, // First Triangle
         1, 2, 3  // Second Triangle
     };
+
     GLuint VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -175,12 +177,14 @@ int main()
 
         auto projection = ta::perspective(ta::rad(fovy), window->ratio(), .1f, 500.f);
         auto view = camera.get_view();
-        auto [tdata, tindices] = model.transform(view, projection);
+        auto [tvertices, tindices] = model.transform(view, projection);
+
+        auto [ncindices, ncvertices] = normal_calling(tindices, tvertices);
 
         auto [width, height] = window->framebuffer_size();
         auto viewport = ta::viewport(0, 0, width, height);
-
-        pool.transform(tdata, tdata.begin(), [&](const ta::vec3& vec) { return (viewport * ta::vec4(vec, 1.f)).swizzle<0, 1, 2>(); });
+        
+        pool.transform(ncvertices, ncvertices.begin(), [&](const ta::vec3& vec) { return (viewport * ta::vec4(vec, 1.f)).swizzle<0, 1, 2>(); });
 
         // Bind Texture
         if (image.size() != width * height)
@@ -189,15 +193,11 @@ int main()
         for (auto& c : image)
             c = bgd_color * 2;
 
-        for (auto i : std::views::iota(0u, tindices.size() / 3))
+        for (auto&& tri : ncindices | std::views::chunk(3))
         {
-            auto tv1 = tindices[i * 3 + 0],
-                tv2 = tindices[i * 3 + 1],
-                tv3 = tindices[i * 3 + 2];
-
-            auto v1 = tdata[tv1],
-                v2 = tdata[tv2],
-                v3 = tdata[tv3];
+            auto v1 = ncvertices[tri[0]],
+                v2 = ncvertices[tri[1]],
+                v3 = ncvertices[tri[2]];
 
             auto dda = [&](ta::vec3 u, ta::vec3 v)
                 {
@@ -205,8 +205,6 @@ int main()
                         disty = v.y() - u.y();
 
                     auto l = static_cast<size_t>(std::max(std::abs(distx), std::abs(disty)));
-                    if (l > 2000)
-                        return;
 
                     ta::vec3 d(distx / l, disty / l, 0.f);
 
@@ -285,4 +283,32 @@ void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model
         model.rotare(ta::vec3(0.f, 1.f, 0.f), ta::rad(15.0f * ms));
     if (keys[GLFW_KEY_RIGHT])
         model.rotare(ta::vec3(0.f, 1.f, 0.f), -ta::rad(15.0f * ms));
+}
+
+std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> normal_calling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
+{
+    std::vector<uint32_t>resi;
+    std::vector<ta::vec3>resv;
+    constexpr size_t triangle{ 3 };
+    for (auto&& tri : indices | std::views::chunk(triangle))
+    {
+        auto v1 = vertices[tri[0]],
+            v2 = vertices[tri[1]],
+            v3 = vertices[tri[2]];
+
+        auto in_normal_range = [](const ta::vec3& v)
+            {
+                return (
+                    v.x() >= -1.f && v.x() <= 1.f &&
+                    v.y() >= -1.f && v.y() <= 1.f &&
+                    v.z() >= -1.f && v.z() <= 1.f);
+            };
+
+        if (in_normal_range(v1) && in_normal_range(v2) && in_normal_range(v3))
+        {
+            resi.insert(resi.end(), tri.begin(), tri.end());
+        }
+    }
+
+    return std::make_tuple(resi, vertices);
 }
