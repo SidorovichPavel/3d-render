@@ -23,7 +23,6 @@
 #include "Model/Model.hpp"
 
 void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float ms);
-std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vector<ta::vec3>& vertices, threadpool::threadpool& pool);
 
 int main()
 {
@@ -286,19 +285,4 @@ void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model
         model.rotare(ta::vec3(0.f, 1.f, 0.f), ta::rad(15.0f * ms));
     if (keys[GLFW_KEY_RIGHT])
         model.rotare(ta::vec3(0.f, 1.f, 0.f), -ta::rad(15.0f * ms));
-}
-
-std::vector<ta::vec2i> apply_viewport(const ta::mat4& viewport, const std::vector<ta::vec3>& vertices, threadpool::threadpool& pool)
-{
-    std::vector<ta::vec2i> result(vertices.size());
-
-    pool.transform(vertices, result.begin(),
-        [&](const ta::vec3& vec)
-        {
-            auto v4 = viewport * ta::vec4(vec, 1.f);
-
-            return ta::vec2i(static_cast<int>(v4.x()), static_cast<int>(v4.y()));
-        });
-
-    return result;
 }
