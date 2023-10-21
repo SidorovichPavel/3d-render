@@ -11,12 +11,14 @@
 #include <iterator>
 #include <numeric>
 
+#include <threadpoollib/threadpool.hpp>
 #include <tinyalgebralib/math/math.hpp>
 #include <tinyalgebralib/Camera.hpp>
 #include <glfwextlib/glfwext.hpp>
 #include <glfwextlib/Window.hpp>
 #include <glewextlib/glewext.hpp>
 #include <glewextlib/Shader.hpp>
+#include <glewextlib/Texture.hpp>
 
 #include "Model/Model.hpp"
 
@@ -58,7 +60,7 @@ int main()
             if (mouse_input)
             {
                 window->set_input_mode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                std::tie(lastX, lastY) = window->get_cursor_pos();
+                std::tie(lastX, lastY) = window->cursor_pos();
             }
             else
                 window->set_input_mode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -129,18 +131,17 @@ int main()
     // Create texture data
     std::tuple<float, float, float, float> bgd_tuple_color(0.2f, 0.3f, 0.3f, 1.f);
     constexpr ta::vec3 bgd_color(0.2f, 0.3f, 0.3f);
-    auto [width, height] = window->size();
+    auto [width, height] = window->framebuffer_size();
     std::vector<ta::vec3> image(width * height);
     for (auto& c : image)
         c = bgd_color;
-    // Load and create a texture 
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture); // All upcoming GL_TEXTURE_2D operations now have effect on this texture object
-    // Load image, create texture and generate mipmaps
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, image.data());
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, 0); // Unbind texture when done, so we won't accidentily mess up our texture.
+    // Load and create a texture
+    glewext::Texture tex1;
+    tex1.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
+        width, height,
+        glewext::TextureBorder::NoBorder, glewext::TextureFormat::RGB, glewext::GLType::Float,
+        image.data());
+    glewext::Texture::unbind();
 
     std::string_view filename("/mnt/sata0/Workshop/3d-render/resources/models/hyperion.stl");
     Model model;
@@ -162,7 +163,7 @@ int main()
 
         auto projection = ta::perspective(ta::rad(90.f), window->ratio(), .1f, 500.f);
         auto view = camera.get_view();
-        auto [width, height] = window->size();
+        auto [width, height] = window->framebuffer_size();
         auto [tdata, indices] = model.transform(view, projection);
 
         auto viewport = ta::viewport(0, 0, width, height);
@@ -212,17 +213,23 @@ int main()
                     }
                 };
 
-            dda(v1, v2);
-            dda(v2, v3);
-            dda(v3, v1);
+            auto f1 = pool.enqueue(dda, v1, v2);
+            auto f2 = pool.enqueue(dda, v2, v3);
+            auto f3 = pool.enqueue(dda, v3, v1);
+
+            f1.get();
+            f2.get();
+            f3.get();
         }
 
         std::apply(glClearColor, bgd_tuple_color);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, image.data());
-        glGenerateMipmap(GL_TEXTURE_2D);
+        tex1.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
+            width, height,
+            glewext::TextureBorder::NoBorder, glewext::TextureFormat::RGB, glewext::GLType::Float,
+            image.data());
+        tex1.bind(glewext::TextureUnit::_0);
         // Activate shader
         main_shader->use();
 
@@ -230,7 +237,7 @@ int main()
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glewext::Texture::unbind();
 
         window->swap_buffers();
         //std::cout << /* 1000.f / */ std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
