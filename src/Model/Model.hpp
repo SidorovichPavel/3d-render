@@ -2,7 +2,7 @@
 #include <string_view>
 
 #include <tinyalgebralib/math/math.hpp>
-#include <threadpoollib/threadpoollib.hpp>
+#include <threadpoollib/threadpool.hpp>
 
 class Model
 {
