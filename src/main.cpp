@@ -136,8 +136,8 @@ int main()
     for (auto& c : image)
         c = bgd_color;
     // Load and create a texture
-    glewext::Texture tex1;
-    tex1.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
+    glewext::Texture texture;
+    texture.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
         width, height,
         glewext::TextureBorder::NoBorder, glewext::TextureFormat::RGB, glewext::GLType::Float,
         image.data());
@@ -213,23 +213,19 @@ int main()
                     }
                 };
 
-            auto f1 = pool.enqueue(dda, v1, v2);
-            auto f2 = pool.enqueue(dda, v2, v3);
-            auto f3 = pool.enqueue(dda, v3, v1);
-
-            f1.get();
-            f2.get();
-            f3.get();
+            dda(v1, v2);
+            dda(v2, v3);
+            dda(v3, v1);
         }
 
         std::apply(glClearColor, bgd_tuple_color);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        tex1.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
+        texture.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
             width, height,
             glewext::TextureBorder::NoBorder, glewext::TextureFormat::RGB, glewext::GLType::Float,
             image.data());
-        tex1.bind(glewext::TextureUnit::_0);
+        texture.bind(glewext::TextureUnit::_0);
         // Activate shader
         main_shader->use();
 
