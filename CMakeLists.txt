@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.25.0)
 project(3d-render VERSION 0.1.0 LANGUAGES C CXX)
 
 find_package(GLEW REQUIRED)
@@ -11,7 +11,11 @@ add_executable(${PROJECT_NAME}
     src/Model/Model.cpp
 )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED On)
+set_target_properties(${PROJECT_NAME} 
+    PROPERTIES 
+    CXX_STANDARD 23
+    CXX_STANDARD_REQUIRED On
+)
 
 include_directories(stl_reader)
 
