@@ -177,14 +177,14 @@ int main()
 
         auto projection = ta::perspective(ta::rad(fovy), window->ratio(), .1f, 500.f);
         auto view = camera.get_view();
-        auto [tvertices, tindices] = model.transform(view, projection);
+        auto [tvertices, tindices] = model.transform(view, projection, pool);
 
         auto [vfc_indices, vfc_vertices] = view_frustum_culling(tindices, tvertices);
 
         auto [width, height] = window->framebuffer_size();
         auto viewport = ta::viewport(0, 0, width, height);
-        
-        pool.transform(vfc_vertices, vfc_vertices.begin(), [&](const ta::vec3& vec) { return (viewport * ta::vec4(vec, 1.f)).swizzle<0, 1, 2>(); });
+
+        pool.transform(vfc_vertices, vfc_vertices.begin(), [&](const ta::vec3& vec) { return ta::vec3(viewport * ta::vec4(vec, 1.f)); });
 
         // Bind Texture
         if (image.size() != width * height)
@@ -198,6 +198,27 @@ int main()
             auto v1 = vfc_vertices[tri[0]],
                 v2 = vfc_vertices[tri[1]],
                 v3 = vfc_vertices[tri[2]];
+
+            // std::array<ta::vec3, 3u> vset{ vfc_vertices[tri[0]],vfc_vertices[tri[1]],vfc_vertices[tri[2]] };
+            // std::ranges::sort(vset, [](const ta::vec3& u, const ta::vec3& v) {return u.x() < v.x();});
+            // auto xmin = std::max(0, static_cast<int>(std::ceil(vset.front().x())));
+            // auto xmax = std::min(width - 1, static_cast<int>(std::ceil(vset.back().x())));
+
+            // std::ranges::sort(vset, [](const ta::vec3& u, const ta::vec3& v) {return u.y() < v.y();});
+            // auto ymin = std::max(0.f, static_cast<int>(std::ceil(vset.front().y())));
+            // auto ymax = std::min(height - 1, static_cast<int>(std::ceil(vset.back().y())));
+
+            // ta::mat4 t{
+            //     ta::vec4(v1, 0.f),
+            //     ta::vec4(v2, 0.f),
+            //     ta::vec4(v3, 0.f),
+            //     ta::vec4(ta::vec3(0.f), 1.f)
+            // };
+
+            // for (auto y : std::ranges::iota(ymin, ymax))
+            // {
+
+            // }
 
             auto dda = [&](ta::vec3 u, ta::vec3 v)
                 {
@@ -244,7 +265,7 @@ int main()
         glewext::Texture::unbind();
 
         window->swap_buffers();
-        //std::cout << /* 1000.f / */ std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
+        std::cout << /* 1000.f / */ std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
     }
 
     // Освобождение ресурсов
