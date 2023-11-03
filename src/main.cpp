@@ -10,6 +10,8 @@
 #include <fstream>
 #include <iterator>
 #include <numeric>
+#include <array>
+#include <cmath>
 
 #include <threadpoollib/threadpool.hpp>
 #include <tinyalgebralib/math/math.hpp>
@@ -21,8 +23,13 @@
 #include <glewextlib/Texture.hpp>
 
 #include "Model/Model.hpp"
+#include "ScreenBuffer.hpp"
 
 std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices);
+
+void rasterization(std::tuple<int, int, int, int> image_box, ScreenBuffer& scbuffer,
+    std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices);
+
 void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float ms);
 
 int main()
@@ -143,24 +150,25 @@ int main()
     glBindVertexArray(0); // Unbind VAO
 
     // Create texture data
+
     std::tuple<float, float, float, float> bgd_tuple_color(0.2f, 0.3f, 0.3f, 1.f);
     constexpr ta::vec3 bgd_color(0.2f, 0.3f, 0.3f);
     auto [width, height] = window->framebuffer_size();
-    std::vector<ta::vec3> image(width * height);
-    for (auto& c : image)
-        c = bgd_color;
+
+    ScreenBuffer screen_buffer(width, height, ta::vec3(0.4f, 0.6f, 0.6f));
+
     // Load and create a texture
     glewext::Texture texture;
     texture.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
         width, height,
         glewext::TextureBorder::NoBorder, glewext::TextureFormat::RGB, glewext::GLType::Float,
-        image.data());
+        screen_buffer.data());
     glewext::Texture::unbind();
 
     std::string_view filename("/mnt/sata0/Workshop/3d-render/resources/models/hyperion.stl");
     Model model;
     model.load_from_file(filename);
-    //model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(90.f));
+    model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(90.f));
 
     auto time = std::chrono::steady_clock::now();
 
@@ -187,65 +195,9 @@ int main()
         pool.transform(vfc_vertices, vfc_vertices.begin(), [&](const ta::vec3& vec) { return ta::vec3(viewport * ta::vec4(vec, 1.f)); });
 
         // Bind Texture
-        if (image.size() != width * height)
-            image.resize(width * height);
+        screen_buffer.clear();
 
-        for (auto& c : image)
-            c = bgd_color * 2;
-
-        for (auto&& tri : vfc_indices | std::views::chunk(3))
-        {
-            auto v1 = vfc_vertices[tri[0]],
-                v2 = vfc_vertices[tri[1]],
-                v3 = vfc_vertices[tri[2]];
-
-            // std::array<ta::vec3, 3u> vset{ vfc_vertices[tri[0]],vfc_vertices[tri[1]],vfc_vertices[tri[2]] };
-            // std::ranges::sort(vset, [](const ta::vec3& u, const ta::vec3& v) {return u.x() < v.x();});
-            // auto xmin = std::max(0, static_cast<int>(std::ceil(vset.front().x())));
-            // auto xmax = std::min(width - 1, static_cast<int>(std::ceil(vset.back().x())));
-
-            // std::ranges::sort(vset, [](const ta::vec3& u, const ta::vec3& v) {return u.y() < v.y();});
-            // auto ymin = std::max(0.f, static_cast<int>(std::ceil(vset.front().y())));
-            // auto ymax = std::min(height - 1, static_cast<int>(std::ceil(vset.back().y())));
-
-            // ta::mat4 t{
-            //     ta::vec4(v1, 0.f),
-            //     ta::vec4(v2, 0.f),
-            //     ta::vec4(v3, 0.f),
-            //     ta::vec4(ta::vec3(0.f), 1.f)
-            // };
-
-            // for (auto y : std::ranges::iota(ymin, ymax))
-            // {
-
-            // }
-
-            auto dda = [&](ta::vec3 u, ta::vec3 v)
-                {
-                    auto distx = v.x() - u.x(),
-                        disty = v.y() - u.y();
-
-                    auto l = static_cast<size_t>(std::max(std::abs(distx), std::abs(disty)));
-
-                    ta::vec3 d(distx / l, disty / l, 0.f);
-
-                    for (auto step : std::views::iota(0u, l))
-                    {
-                        auto x = static_cast<int>(u.x()),
-                            y = static_cast<int>(u.y());
-                        u += d;
-
-                        auto cx = std::clamp(x, 0, width - 1),
-                            cy = std::clamp(y, 0, height - 1);
-
-                        image[cy * width + cx] = ta::vec3(1.f);
-                    }
-                };
-
-            dda(v1, v2);
-            dda(v2, v3);
-            dda(v3, v1);
-        }
+        rasterization(std::make_tuple(0, 0, width, height), screen_buffer, vfc_indices, vfc_vertices);
 
         std::apply(glClearColor, bgd_tuple_color);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -253,7 +205,7 @@ int main()
         texture.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
             width, height,
             glewext::TextureBorder::NoBorder, glewext::TextureFormat::RGB, glewext::GLType::Float,
-            image.data());
+            screen_buffer.data());
         texture.bind(glewext::TextureUnit::_0);
         // Activate shader
         main_shader->use();
@@ -278,32 +230,33 @@ int main()
     return 0;
 }
 
-void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float ms)
+void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model, float t)
 {
-    if (ms == INFINITY)
-        ms = 0.0001f;
+    if (t == INFINITY)
+        t = 0.0001f;
 
     decltype(auto) keys = window.keys_state();
 
     float cameraSpeed = 200.f;
-
+    ta::vec3 move(0.f);
     if (keys[GLFW_KEY_W])
-        camera.move_front(-cameraSpeed * ms);
+        move.z() -= 1.f;
     if (keys[GLFW_KEY_S])
-        camera.move_back(-cameraSpeed * ms);
+        move.z() += 1.f;
     if (keys[GLFW_KEY_A])
-        camera.move_left(cameraSpeed * ms);
+        move.x() -= 1.f;
     if (keys[GLFW_KEY_D])
-        camera.move_right(cameraSpeed * ms);
+        move.x() += 1.f;
+    camera.apply_move(move, cameraSpeed * t);
 
     if (keys[GLFW_KEY_UP])
-        model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(15.0f * ms));
+        model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(15.0f * t));
     if (keys[GLFW_KEY_DOWN])
-        model.rotare(ta::vec3(1.f, 0.f, 0.f), -ta::rad(15.0f * ms));
+        model.rotare(ta::vec3(1.f, 0.f, 0.f), -ta::rad(15.0f * t));
     if (keys[GLFW_KEY_LEFT])
-        model.rotare(ta::vec3(0.f, 1.f, 0.f), ta::rad(15.0f * ms));
+        model.rotare(ta::vec3(0.f, 1.f, 0.f), ta::rad(15.0f * t));
     if (keys[GLFW_KEY_RIGHT])
-        model.rotare(ta::vec3(0.f, 1.f, 0.f), -ta::rad(15.0f * ms));
+        model.rotare(ta::vec3(0.f, 1.f, 0.f), -ta::rad(15.0f * t));
 }
 
 std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
@@ -320,9 +273,9 @@ std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(st
         auto in_normal_range = [](const ta::vec3& v)
             {
                 return (
-                    v.x() >= -1.f && v.x() <= 1.f &&
-                    v.y() >= -1.f && v.y() <= 1.f &&
-                    v.z() >= -1.f && v.z() <= 1.f);
+                    v.x() >= -1.f && v.x() < 1.f &&
+                    v.y() >= -1.f && v.y() < 1.f &&
+                    v.z() >= -1.f && v.z() < 1.f);
             };
 
         if (in_normal_range(v1) && in_normal_range(v2) && in_normal_range(v3))
@@ -332,4 +285,50 @@ std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(st
     }
 
     return std::make_tuple(resi, std::move(vertices));
+}
+
+void rasterization(std::tuple<int, int, int, int> image_box, ScreenBuffer& scbuffer, std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
+{
+    auto&& [boxminx, boxminy, boxmaxx, boxmaxy] = image_box;
+
+    for (auto&& tri : indices | std::views::chunk(3))
+    {
+        std::array<ta::vec3, 3> vtcs{ vertices[tri[0]] ,vertices[tri[1]], vertices[tri[2]] };
+
+        ta::vec2i bboxmin(boxmaxx - 1, boxmaxy - 1);
+        ta::vec2i bboxmax(boxminx, boxminy);
+        ta::vec2i clamp = bboxmin;
+
+        for (auto&& v : vtcs)
+        {
+            bboxmin.x() = std::clamp(static_cast<int>(std::ceil(v.x())), 0, bboxmin.x());
+            bboxmin.y() = std::clamp(static_cast<int>(std::ceil(v.y())), 0, bboxmin.y());
+
+            bboxmax.x() = std::clamp(static_cast<int>(std::ceil(v.x())), bboxmax.x(), clamp.x());
+            bboxmax.y() = std::clamp(static_cast<int>(std::ceil(v.y())), bboxmax.y(), clamp.y());
+        }
+
+        ta::vec2i p;
+
+        for (p.x() = bboxmin.x(); p.x() <= bboxmax.x(); p.x()++)
+        {
+            for (p.y() = bboxmin.y(); p.y() <= bboxmax.y(); p.y()++)
+            {
+                auto b = ta::barycentric(vtcs[0], vtcs[1], vtcs[2], p);
+                if (!b || (b->x() < 0.f) || (b->y() < 0.f) || (b->z() < 0.f))
+                    continue;
+
+                float z = 0.f;
+                for (auto&& [v, bc] : std::views::zip(vtcs, *b))
+                    z += v.z() * bc;
+
+                int idx = p.y() * boxmaxx + p.x();
+                if (scbuffer.z(p.y())[p.x()] < z)
+                {
+                    scbuffer.z(p.y())[p.x()] = z;
+                    scbuffer[p.y()][p.x()] = ta::vec3(1.f);
+                }
+            }
+        }
+    }
 }
