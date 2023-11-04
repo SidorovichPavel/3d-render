@@ -12,7 +12,7 @@ find_package(OpenGL REQUIRED)
 set(SOURCES
     src/main.cpp
     src/Model/Model.cpp
-    src/ScreenBuffer.cpp
+    src/ScreenBuffer/ScreenBuffer.cpp
 )
 
 include_directories(stl_reader)

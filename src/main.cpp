@@ -12,6 +12,7 @@
 #include <numeric>
 #include <array>
 #include <cmath>
+#include <format>
 
 #include <threadpoollib/threadpool.hpp>
 #include <tinyalgebralib/math/math.hpp>
@@ -23,8 +24,9 @@
 #include <glewextlib/Texture.hpp>
 
 #include "Model/Model.hpp"
-#include "ScreenBuffer.hpp"
+#include "ScreenBuffer/ScreenBuffer.hpp"
 
+std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> backface_culling(const ta::vec3& eye, std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices);
 std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices);
 
 void rasterization(std::tuple<int, int, int, int> image_box, ScreenBuffer& scbuffer,
@@ -187,7 +189,9 @@ int main()
         auto view = camera.get_view();
         auto [tvertices, tindices] = model.transform(view, projection, pool);
 
-        auto [vfc_indices, vfc_vertices] = view_frustum_culling(tindices, tvertices);
+
+        auto [bfc_indives, bfc_vertices] = backface_culling(camera.position(), tindices, tvertices);
+        auto [vfc_indices, vfc_vertices] = view_frustum_culling(bfc_indives, bfc_vertices);
 
         auto [width, height] = window->framebuffer_size();
         auto viewport = ta::viewport(0, 0, width, height);
@@ -259,6 +263,34 @@ void do_movement(const glfwext::Window& window, ta::Camera& camera, Model& model
         model.rotare(ta::vec3(0.f, 1.f, 0.f), -ta::rad(15.0f * t));
 }
 
+std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> backface_culling(const ta::vec3& eye, std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
+{
+    std::vector<uint32_t>resi;
+    constexpr size_t triangle{ 3 };
+
+    for (auto&& tri : indices | std::views::chunk(triangle))
+    {
+        ta::vec3 v1 = vertices[tri[0]],
+            v2 = vertices[tri[1]],
+            v3 = vertices[tri[2]];
+
+        auto v12 = v2 - v1;
+        auto v13 = v3 - v1;
+        auto n = ta::normalize(ta::cross(v12, v13));
+
+        auto dir = ta::normalize(v1 - eye);
+
+        auto dotr = ta::dot(dir, n);
+
+        if (dotr > 0.f)
+        {
+            resi.insert(resi.end(), tri.begin(), tri.end());
+        }
+    }
+
+    return std::make_tuple(std::move(indices), std::move(vertices));
+}
+
 std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
 {
     std::vector<uint32_t>resi;
@@ -266,7 +298,7 @@ std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(st
     constexpr size_t triangle{ 3 };
     for (auto&& tri : indices | std::views::chunk(triangle))
     {
-        auto v1 = vertices[tri[0]],
+        ta::vec3 v1 = vertices[tri[0]],
             v2 = vertices[tri[1]],
             v3 = vertices[tri[2]];
 
@@ -289,6 +321,8 @@ std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(st
 
 void rasterization(std::tuple<int, int, int, int> image_box, ScreenBuffer& scbuffer, std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
 {
+    ta::vec3 light_pos(0.f, 300.f, 0.f);
+
     auto&& [boxminx, boxminy, boxmaxx, boxmaxy] = image_box;
 
     for (auto&& tri : indices | std::views::chunk(3))
@@ -322,11 +356,10 @@ void rasterization(std::tuple<int, int, int, int> image_box, ScreenBuffer& scbuf
                 for (auto&& [v, bc] : std::views::zip(vtcs, *b))
                     z += v.z() * bc;
 
-                int idx = p.y() * boxmaxx + p.x();
                 if (scbuffer.z(p.y())[p.x()] < z)
                 {
                     scbuffer.z(p.y())[p.x()] = z;
-                    scbuffer[p.y()][p.x()] = ta::vec3(1.f);
+                    scbuffer[p.y()][p.x()] = ta::vec3(0.7f);
                 }
             }
         }

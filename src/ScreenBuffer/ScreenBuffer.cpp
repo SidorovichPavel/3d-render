@@ -16,14 +16,14 @@ ScreenBuffer::ScreenBuffer(size_t width, size_t height, ta::vec3 default_color)
 
 detail::ref_to_row<std::vector<ta::vec3>::iterator> ScreenBuffer::operator[](size_t offset)
 {
-    assert(offset >= height_);
+    assert(offset < height_);
 
     return detail::ref_to_row<std::vector<ta::vec3>::iterator>(buffer_.begin() + offset * width_, width_);
 }
 
 detail::ref_to_row<std::vector<float>::iterator> ScreenBuffer::z(size_t offset)
 {
-    assert(offset >= height_);
+    assert(offset < height_);
 
     return detail::ref_to_row<std::vector<float>::iterator>(zbuffer_.begin() + offset * width_, width_);
 }
