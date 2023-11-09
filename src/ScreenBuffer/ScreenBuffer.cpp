@@ -43,3 +43,15 @@ void* ScreenBuffer::data()
 {
     return static_cast<void*>(buffer_.data());
 }
+
+std::vector<float> ScreenBuffer::as_floats() const
+{
+    std::vector<float> result(buffer_.size() * 3);
+    for (auto i = 0;i < buffer_.size();++i)
+    {
+        result[i * 3 + 0] = buffer_[i].r();
+        result[i * 3 + 1] = buffer_[i].g();
+        result[i * 3 + 2] = buffer_[i].b();
+    }
+    return result;
+}

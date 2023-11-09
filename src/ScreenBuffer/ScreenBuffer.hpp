@@ -68,6 +68,8 @@ public:
 
     void* data();
 
+    std::vector<float> as_floats() const;
+
 private:
 
     size_t width_, height_;
