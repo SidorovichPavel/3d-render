@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <string_view>
 
@@ -38,5 +40,4 @@ private:
 
     static constexpr size_t chunk_count = 8;
     ta::mat4 model_;
-
 };
