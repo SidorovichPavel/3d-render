@@ -13,6 +13,7 @@ set(SOURCES
     src/main.cpp
     src/Model/Model.cpp
     src/ScreenBuffer/ScreenBuffer.cpp
+    src/App.cpp
 )
 
 include_directories(stl_reader)
@@ -24,7 +25,7 @@ add_subdirectory(threadpoollib)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-add_compile_options(-march=native)
+add_compile_options(-ffast-math)
 add_compile_options(-d)
 
 target_link_libraries(${PROJECT_NAME} 
