@@ -61,7 +61,7 @@ float* Model::vdata() noexcept
     if (vertices_.empty())
         return nullptr;
 
-    return &vertices_[0][0];
+    return vertices_.data()->data();
 }
 
 unsigned int* Model::indices() noexcept
