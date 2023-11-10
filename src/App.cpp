@@ -5,9 +5,6 @@ App::App(int argc, char* args[])
     camera(ta::vec3(390.f, 0.f, 0.f), ta::vec3(0.f, 0.f, 0.f), ta::vec3(0.f, 1.f, 0.f)),
     pool(12u)
 {
-    std::string_view vshader("/mnt/sata0/Workshop/3d-render/resources/glsl/main.vert");
-    std::string_view fshader("/mnt/sata0/Workshop/3d-render/resources/glsl/main.frag");
-
     ta::vec2i screen_size{ 1280, 720 };
     try
     {
@@ -15,7 +12,7 @@ App::App(int argc, char* args[])
         window = std::make_unique<glfwext::Window>("GLFW Window", screen_size.x(), screen_size.y());
         window->make_current(); // make current gl context
         glewext::init(); // init glew
-        main_shader = std::make_unique<glewext::Shader>(vshader, fshader);
+        engine_ = std::make_unique<engine::Engine>(1280, 720, 16);
     }
     catch (std::exception& e)
     {
@@ -85,50 +82,13 @@ App::App(int argc, char* args[])
         1, 2, 3  // Second Triangle
     };
 
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // Position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    // Color attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    // TexCoord attribute
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    glBindVertexArray(0); // Unbind VAO
-
     std::string_view filename("/mnt/sata0/Workshop/3d-render/resources/models/hyperion.stl");
     model.load_from_file(filename);
     model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(90.f));
-
-    auto [width, height] = window->framebuffer_size();
-    screen_buffer = std::make_unique<ScreenBuffer>(width, height, ta::vec3(0.4f, 0.6f, 0.6f));
-
-    texture.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
-        width, height,
-        glewext::TextureBorder::NoBorder, glewext::TextureFormat::RGB, glewext::GLType::Float,
-        screen_buffer->data());
-    glewext::Texture::unbind();
 }
 
 App::~App()
 {
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-
     glfwTerminate();
 }
 
@@ -270,32 +230,17 @@ void App::run()
                 return ta::vec3(viewport * ta::vec4(vec, 1.f));
             });
 
-        // Bind Texture
-        screen_buffer->clear();
-
         std::vector<std::tuple<int32_t, int32_t, int32_t, int32_t>> boxes{
             {0,0,width, height}
         };
 
-        rasterization(std::make_tuple(0, 0, width, height), *screen_buffer, vfc_indices, vfc_vertices);
+        //rasterization(std::make_tuple(0, 0, width, height), *screen_buffer, vfc_indices, vfc_vertices);
 
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0.2f, 0.3f, 0.3f, 1.f);
 
-        auto tmp = screen_buffer->as_floats();
-        texture.load_image_from_memory(glewext::TextureLevel::Base, glewext::TextureInternalFormat::RGB,
-            width, height,
-            glewext::TextureBorder::NoBorder, glewext::TextureFormat::RGB, glewext::GLType::Float,
-            tmp.data());
-        texture.bind(glewext::TextureUnit::_0);
-        // Activate shader
-        main_shader->use();
-
         // Draw container
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-        glewext::Texture::unbind();
+        engine_->display();
 
         window->swap_buffers();
         std::cout << /* 1000.f / */ std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;

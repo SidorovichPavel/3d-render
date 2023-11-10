@@ -43,7 +43,6 @@ private:
     threadpool::threadpool pool;
 
     std::unique_ptr<glfwext::Window> window;
-    std::unique_ptr<glewext::Shader> main_shader;
 
     bool mouse_input{ false };
     float lastX, lastY;
@@ -52,7 +51,5 @@ private:
     engine::Model model;
     ta::Camera camera;
 
-    std::unique_ptr<ScreenBuffer> screen_buffer;
-    glewext::Texture texture;
-    uint32_t VBO, VAO, EBO;
+    std::unique_ptr<engine::Engine> engine_;
 };
