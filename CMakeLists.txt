@@ -11,9 +11,16 @@ find_package(OpenGL REQUIRED)
 
 set(SOURCES
     src/main.cpp
-    src/Model/Model.cpp
     src/ScreenBuffer/ScreenBuffer.cpp
+    src/App.hpp
     src/App.cpp
+    src/Engine/Model/Model.hpp
+    src/Engine/Model/Model.cpp
+    src/Engine/Engine.hpp
+    src/Engine/Engine.cpp
+    src/Engine/Pipeline.hpp
+    src/Engine/Pipeline.cpp
+    src/Engine/Utility.hpp
 )
 
 include_directories(stl_reader)
