@@ -228,7 +228,7 @@ void rasterization(std::tuple<int, int, int, int> image_box, ScreenBuffer& scbuf
                 if (scbuffer.z(p.y())[p.x()] < z)
                 {
                     scbuffer.z(p.y())[p.x()] = z;
-                    scbuffer[p.y()][p.x()] = ta::vec3(0.7f);
+                    scbuffer[p.y()][p.x()] = ta::vec3(0.9f);
                 }
             }
         }

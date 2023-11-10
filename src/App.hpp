@@ -23,8 +23,10 @@
 #include <glewextlib/Shader.hpp>
 #include <glewextlib/Texture.hpp>
 
-#include "Model/Model.hpp"
+#include "Engine/Model/Model.hpp"
 #include "ScreenBuffer/ScreenBuffer.hpp"
+
+#include "Engine/Engine.hpp"
 
 class App
 {
@@ -47,7 +49,7 @@ private:
     float lastX, lastY;
     float fovy{ 90.f };
 
-    Model model;
+    engine::Model model;
     ta::Camera camera;
 
     std::unique_ptr<ScreenBuffer> screen_buffer;
