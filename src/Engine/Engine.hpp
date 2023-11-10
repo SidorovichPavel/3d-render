@@ -18,11 +18,11 @@ namespace engine {
     {
     public:
 
-        //Engine(std::size_t tile_size);
+        Engine(std::size_t tile_size);
         Engine(std::size_t width, std::size_t height, std::size_t tile_size);
         ~Engine();
 
-        //void init(std::size_t width, std::size_t height);
+        void init(std::size_t width, std::size_t height);
         void reset();
 
         void operator()(Model& model);
@@ -43,6 +43,8 @@ namespace engine {
 
         GLuint VAO, VBOPos, VBOCol;
         std::unique_ptr<glewext::Shader> shader_;
+
+        threadpool::threadpool pool_;
     };
 
 }

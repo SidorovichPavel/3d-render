@@ -3,7 +3,8 @@
 App::App(int argc, char* args[])
     :
     camera(ta::vec3(390.f, 0.f, 0.f), ta::vec3(0.f, 0.f, 0.f), ta::vec3(0.f, 1.f, 0.f)),
-    pool(12u)
+    pool(12u),
+    engine_(16)
 {
     ta::vec2i screen_size{ 1280, 720 };
     try
@@ -12,7 +13,7 @@ App::App(int argc, char* args[])
         window = std::make_unique<glfwext::Window>("GLFW Window", screen_size.x(), screen_size.y());
         window->make_current(); // make current gl context
         glewext::init(); // init glew
-        engine_ = std::make_unique<engine::Engine>(1280, 720, 16);
+        engine_.init(1280, 720);
     }
     catch (std::exception& e)
     {
@@ -92,62 +93,6 @@ App::~App()
     glfwTerminate();
 }
 
-std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> backface_culling(const ta::vec3& eye, std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
-{
-    std::vector<uint32_t>resi;
-    constexpr size_t triangle{ 3 };
-
-    for (auto&& tri : indices | std::views::chunk(triangle))
-    {
-        ta::vec3 v1 = vertices[tri[0]],
-            v2 = vertices[tri[1]],
-            v3 = vertices[tri[2]];
-
-        auto v12 = v2 - v1;
-        auto v13 = v3 - v1;
-        auto n = ta::normalize(ta::cross(v12, v13));
-
-        auto dir = ta::normalize(v1 - eye);
-
-        auto dotr = ta::dot(dir, n);
-
-        if (dotr > 0.f)
-        {
-            resi.insert(resi.end(), tri.begin(), tri.end());
-        }
-    }
-
-    return std::make_tuple(std::move(indices), std::move(vertices));
-}
-
-std::tuple<std::vector<uint32_t>, std::vector<ta::vec3>> view_frustum_culling(std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
-{
-    std::vector<uint32_t>resi;
-    std::vector<ta::vec3>resv;
-    constexpr size_t triangle{ 3 };
-    for (auto&& tri : indices | std::views::chunk(triangle))
-    {
-        ta::vec3 v1 = vertices[tri[0]],
-            v2 = vertices[tri[1]],
-            v3 = vertices[tri[2]];
-
-        auto in_normal_range = [](const ta::vec3& v)
-            {
-                return (
-                    v.x() >= -1.f && v.x() < 1.f &&
-                    v.y() >= -1.f && v.y() < 1.f &&
-                    v.z() >= -1.f && v.z() < 1.f);
-            };
-
-        if (in_normal_range(v1) && in_normal_range(v2) && in_normal_range(v3))
-        {
-            resi.insert(resi.end(), tri.begin(), tri.end());
-        }
-    }
-
-    return std::make_tuple(resi, std::move(vertices));
-}
-
 void rasterization(std::tuple<int, int, int, int> image_box, ScreenBuffer& scbuffer, std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
 {
     ta::vec3 light_pos(0.f, 300.f, 0.f);
@@ -215,32 +160,15 @@ void App::run()
 
         auto projection = ta::perspective(ta::rad(fovy), window->ratio(), .1f, 500.f);
         auto view = camera.get_view();
-        auto [tvertices, tindices] = model.transform(view, projection);
 
+        // draw to opengl context
+        engine_.display();
 
-        auto [bfc_indives, bfc_vertices] = backface_culling(camera.position(), tindices, tvertices);
-        auto [vfc_indices, vfc_vertices] = view_frustum_culling(bfc_indives, bfc_vertices);
+        //draw model
+        //(*engine_)(model);
 
-        auto [width, height] = window->framebuffer_size();
-        auto viewport = ta::viewport(0, 0, width, height);
-
-        std::ranges::transform(vfc_vertices, vfc_vertices.begin(),
-            [&](const ta::vec3& vec)
-            {
-                return ta::vec3(viewport * ta::vec4(vec, 1.f));
-            });
-
-        std::vector<std::tuple<int32_t, int32_t, int32_t, int32_t>> boxes{
-            {0,0,width, height}
-        };
-
-        //rasterization(std::make_tuple(0, 0, width, height), *screen_buffer, vfc_indices, vfc_vertices);
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0.2f, 0.3f, 0.3f, 1.f);
-
-        // Draw container
-        engine_->display();
+        // reset engine state
+        engine_.reset();
 
         window->swap_buffers();
         std::cout << /* 1000.f / */ std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;

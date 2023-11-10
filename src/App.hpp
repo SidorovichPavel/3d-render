@@ -51,5 +51,5 @@ private:
     engine::Model model;
     ta::Camera camera;
 
-    std::unique_ptr<engine::Engine> engine_;
+    engine::Engine engine_;
 };
