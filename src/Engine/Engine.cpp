@@ -11,7 +11,7 @@ namespace engine
         tile_size_(tile_size),
         pool_(10)
     {
-        
+
     }
 
     Engine::Engine(std::size_t width, std::size_t height, std::size_t tile_size)
@@ -105,6 +105,34 @@ namespace engine
         std::string_view fshader("/mnt/sata0/Workshop/3d-render/resources/glsl/main.frag");
 
         shader_ = std::make_unique<glewext::Shader>(vshader, fshader);
+    }
+
+    void Engine::resize(std::size_t width, std::size_t height) {
+
+        zbuffer_ = std::vector<float>(width * height, std::numeric_limits<float>::max());
+        screen_points_buffer_ = std::vector<float>(width * height * 2);
+        color_buffer_ = std::vector<float>(width * height * 3, 0.7f);
+
+        zgrid_ = mdspan<float, 2>(zbuffer_.data(), height, width);
+
+        auto sp_grid_ = mdspan<float, 3>(screen_points_buffer_.data(), height, width, std::size_t(2));
+        for (std::size_t i = 0;i < height;i++)
+            for (std::size_t j = 0;j < width;j++) {
+                sp_grid_[i][j][0] = 2.f * j / width - 1.f;
+                sp_grid_[i][j][1] = 2.f * i / height - 1.f;
+            }
+
+        colors_ = mdspan<float, 3>(color_buffer_.data(), height, width, static_cast<std::size_t>(3));
+
+        glBindVertexArray(VAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBOPos);
+        glBufferData(GL_ARRAY_BUFFER, screen_points_buffer_.size() * sizeof(float), screen_points_buffer_.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBOCol);
+        glBufferData(GL_VERTEX_ARRAY, color_buffer_.size() * sizeof(float), color_buffer_.data(), GL_STREAM_DRAW);
+
+        glBindVertexArray(0);
     }
 
     void Engine::reset() {

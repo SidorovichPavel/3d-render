@@ -23,6 +23,7 @@ namespace engine {
         ~Engine();
 
         void init(std::size_t width, std::size_t height);
+        void resize(std::size_t width, std::size_t height);
         void reset();
 
         void operator()(Model& model);

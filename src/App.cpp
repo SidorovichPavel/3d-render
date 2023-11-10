@@ -20,7 +20,8 @@ App::App(int argc, char* args[])
         std::cerr << e.what() << std::endl;
     }
 
-    window->framebuffer_resize += [](glfwext::Window* window, int width, int height) {
+    window->framebuffer_resize += [this](glfwext::Window* window, int width, int height) {
+        engine_.resize(static_cast<std::size_t>(width), static_cast<std::size_t>(height));
         glViewport(0, 0, width, height);
         };
 
