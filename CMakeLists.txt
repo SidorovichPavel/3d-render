@@ -21,6 +21,7 @@ set(SOURCES
     src/Engine/Pipeline.hpp
     src/Engine/Pipeline.cpp
     src/Engine/Utility.hpp
+    src/Engine/Shader.hpp
 )
 
 include_directories(stl_reader)
