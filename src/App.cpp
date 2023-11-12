@@ -13,7 +13,8 @@ App::App(int argc, char* args[])
         window = std::make_unique<glfwext::Window>("GLFW Window", screen_size.x(), screen_size.y());
         window->make_current(); // make current gl context
         glewext::init(); // init glew
-        engine_.init(1280, 720);
+        engine_.init(screen_size.x(), screen_size.y());
+        engine_.viewport(0, 0, screen_size.x(), screen_size.y());
     }
     catch (std::exception& e)
     {
@@ -72,21 +73,10 @@ App::App(int argc, char* args[])
         camera.update_angles(yoffset, xoffset, 0.f);
         };
 
-    float vertices[] = {
-        // Positions          // Colors           // Texture Coords
-         1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // Top Right
-         1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // Bottom Right
-        -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // Bottom Left
-        -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // Top Left 
-    };
-    GLuint indices[] = {  // Note that we start from 0!
-        0, 1, 3, // First Triangle
-        1, 2, 3  // Second Triangle
-    };
 
     std::string_view filename("/mnt/sata0/Workshop/3d-render/resources/models/hyperion.stl");
     model.load_from_file(filename);
-    model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(90.f));
+    //model.rotare(ta::vec3(1.f, 0.f, 0.f), ta::rad(90.f));
 }
 
 App::~App()
@@ -94,58 +84,40 @@ App::~App()
     glfwTerminate();
 }
 
-void rasterization(std::tuple<int, int, int, int> image_box, ScreenBuffer& scbuffer, std::vector<uint32_t>& indices, std::vector<ta::vec3>& vertices)
+#include "Engine/Shader.hpp"
+
+class MainShader : public engine::IShader
 {
-    ta::vec3 light_pos(0.f, 300.f, 0.f);
+public:
 
-    auto&& [boxminx, boxminy, boxmaxx, boxmaxy] = image_box;
+    MainShader() = default;
+    ~MainShader() = default;
 
-    for (auto&& tri : indices | std::views::chunk(3))
-    {
-        std::array<ta::vec3, 3> vtcs{ vertices[tri[0]] ,vertices[tri[1]], vertices[tri[2]] };
+    static ta::mat4 transform;
 
-        ta::vec2i bboxmin(boxmaxx - 1, boxmaxy - 1);
-        ta::vec2i bboxmax(boxminx, boxminy);
-        ta::vec2i clamp = bboxmin;
+private:
 
-        for (auto&& v : vtcs)
-        {
-            bboxmin.x() = std::clamp(static_cast<int>(std::ceil(v.x())), 0, bboxmin.x());
-            bboxmin.y() = std::clamp(static_cast<int>(std::ceil(v.y())), 0, bboxmin.y());
+    ta::vec3 color;
+    ta::vec3 normal;
 
-            bboxmax.x() = std::clamp(static_cast<int>(std::ceil(v.x())), bboxmax.x(), clamp.x());
-            bboxmax.y() = std::clamp(static_cast<int>(std::ceil(v.y())), bboxmax.y(), clamp.y());
-        }
+public:
 
-        ta::vec2i p;
-
-        for (p.x() = bboxmin.x(); p.x() <= bboxmax.x(); p.x()++)
-        {
-            for (p.y() = bboxmin.y(); p.y() <= bboxmax.y(); p.y()++)
-            {
-                auto b = ta::barycentric(vtcs[0], vtcs[1], vtcs[2], p);
-                if (!b || (b->x() < 0.f) || (b->y() < 0.f) || (b->z() < 0.f))
-                    continue;
-
-                float z = 0.f;
-                for (auto&& [v, bc] : std::views::zip(vtcs, *b))
-                    z += v.z() * bc;
-
-                if (scbuffer.z(p.y())[p.x()] < z)
-                {
-                    scbuffer.z(p.y())[p.x()] = z;
-                    scbuffer[p.y()][p.x()] = ta::vec3(0.9f);
-                }
-            }
-        }
+    ta::vec4 Vertex(ta::vec3 pos) override {
+        return transform * ta::vec4(pos, 1.f);
     }
-}
+    ta::vec4 Fragment() override {
+        return ta::vec4();
+    }
+};
+
+ta::mat4 MainShader::transform;
 
 void App::run()
 {
     if (!window)
         return;
 
+    MainShader shader;
     auto time = std::chrono::steady_clock::now();
 
     for (; !window->should_close();)
@@ -162,14 +134,15 @@ void App::run()
         auto projection = ta::perspective(ta::rad(fovy), window->ratio(), .1f, 500.f);
         auto view = camera.get_view();
 
-        // draw to opengl context
-        engine_.display();
-
-        //draw model
-        //(*engine_)(model);
-
         // reset engine state
         engine_.reset();
+
+        //draw model
+        MainShader::transform = projection * view * model.mat4();
+        engine_(model, &shader, camera.position());
+
+        // draw to opengl context
+        engine_.display();
 
         window->swap_buffers();
         std::cout << /* 1000.f / */ std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rend_begin).count() << std::endl;
@@ -183,7 +156,7 @@ void App::movement(float t) noexcept
 
     decltype(auto) keys = window->keys_state();
 
-    float cameraSpeed = 200.f;
+    float cameraSpeed = 20.f;
     ta::vec3 move(0.f);
 
     if (keys[GLFW_KEY_W])
