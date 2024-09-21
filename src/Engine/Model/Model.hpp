@@ -5,8 +5,8 @@
 
 #include <stl_reader.h>
 
-#include <tinyalgebralib/math/math.hpp>
-#include <threadpoollib/threadpool.hpp>
+#include <tinyalgebra/math/math.hpp>
+#include <threadpool/threadpool.hpp>
 
 namespace engine {
 

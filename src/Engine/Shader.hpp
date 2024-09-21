@@ -1,19 +1,16 @@
 #pragma once
 
-#include <tinyalgebralib/math/math.hpp>
+#include <tinyalgebra/math/math.hpp>
 
 namespace engine {
 
-    class IShader
-    {
-    public:
+class IShader {
+ public:
+  IShader() = default;
+  virtual ~IShader() = default;
 
-        IShader() = default;
-        virtual ~IShader() = default;
+  virtual ta::vec4 Vertex(ta::vec3 pos) = 0;
+  virtual ta::vec4 Fragment() = 0;
+};
 
-        virtual ta::vec4 Vertex(ta::vec3 pos) = 0;
-        virtual ta::vec4 Fragment() = 0;
-    };
-
-
-}
+}  // namespace engine

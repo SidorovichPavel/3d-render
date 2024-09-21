@@ -24,21 +24,21 @@ set(SOURCES
     src/Engine/Shader.hpp
 )
 
-include_directories(stl_reader)
+include_directories(third_party/stl_reader)
 
-add_subdirectory(glfwextlib)
-add_subdirectory(glewextlib)
-add_subdirectory(tinyalgebralib)
-add_subdirectory(threadpoollib)
+add_subdirectory(third_party/glfwext)
+add_subdirectory(third_party/glewext)
+add_subdirectory(third_party/tinyalgebra)
+add_subdirectory(third_party/threadpool)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 add_compile_options(-ffast-math)
 add_compile_options(-d)
 
-target_link_libraries(${PROJECT_NAME} 
-    glfwextlib
-    glewextlib
-    tinyalgebralib
-    threadpoollib
+target_link_libraries(${PROJECT_NAME}
+    glfwext
+    glewext
+    tinyalgebra
+    threadpool
 )
