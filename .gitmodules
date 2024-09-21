@@ -1,0 +1,15 @@
+[submodule "third_party/glfwext"]
+	path = third_party/glfwext
+	url = git@github.com:SidorovichPavel/glfwext.git
+[submodule "third_party/threadpool"]
+	path = third_party/threadpool
+	url = git@github.com:SidorovichPavel/threadpool.git
+[submodule "third_party/tinyalgebra"]
+	path = third_party/tinyalgebra
+	url = git@github.com:SidorovichPavel/tinyalgebra.git
+[submodule "third_party/glewext"]
+	path = third_party/glewext
+	url = git@github.com:SidorovichPavel/glewext.git
+[submodule "third_party/stl_reader"]
+	path = third_party/stl_reader
+	url = https://github.com/sreiter/stl_reader.git
