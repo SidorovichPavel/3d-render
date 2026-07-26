@@ -1,44 +1,70 @@
-cmake_minimum_required(VERSION 3.25.0)
-project(3d-render VERSION 0.1.0 LANGUAGES C CXX)
+cmake_minimum_required(VERSION 4.4.0)
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+project(3d-render LANGUAGES CXX)
 
-find_package(GLEW REQUIRED)
+include(cmake/CPM.cmake)
 
-set(OpenGL_GL_PREFERENCE GLVND)
-find_package(OpenGL REQUIRED)
+CPMAddPackage("gh:boostorg/boost#boost-1.91.0")
+CPMAddPackage("gh:emoon/minifb#v0.10.1")
+CPMAddPackage("gh:sreiter/stl_reader#v2.0")
+CPMAddPackage("gh:NVIDIA/stdexec#nvhpc-25.09")
+CPMAddPackage(URI "gh:gabime/spdlog#v1.16.0"
+        OPTIONS
+        "SPDLOG_USE_STD_FORMAT ON"
+        "SPDLOG_BUILD_WARNINGS ON"
+        "SPDLOG_NO_TLS ON")
 
-set(SOURCES
-    src/main.cpp
-    src/ScreenBuffer/ScreenBuffer.cpp
-    src/App.hpp
-    src/App.cpp
-    src/Engine/Model/Model.hpp
-    src/Engine/Model/Model.cpp
-    src/Engine/Engine.hpp
-    src/Engine/Engine.cpp
-    src/Engine/Pipeline.hpp
-    src/Engine/Pipeline.cpp
-    src/Engine/Utility.hpp
-    src/Engine/Shader.hpp
-)
+# add_subdirectory(third_party/tinyalgebra)
+# add_subdirectory(third_party/threadpool)
 
-include_directories(third_party/stl_reader)
+add_subdirectory(src/engine)
 
-add_subdirectory(third_party/glfwext)
-add_subdirectory(third_party/glewext)
-add_subdirectory(third_party/tinyalgebra)
-add_subdirectory(third_party/threadpool)
+add_library(exception OBJECT)
+target_compile_features(exception PRIVATE cxx_std_26)
+target_link_libraries(exception PRIVATE
+        Boost::stacktrace)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+target_sources(exception
+        PUBLIC
+        FILE_SET module_list TYPE CXX_MODULES FILES
+        src/exception.cppm)
 
-add_compile_options(-ffast-math)
-add_compile_options(-d)
+add_library(render_obj OBJECT)
+target_compile_features(render_obj PRIVATE cxx_std_26)
+target_compile_options(render_obj PUBLIC -freflection)
+target_link_libraries(render_obj PRIVATE
+        exception
+        minifb::minifb
+        spdlog::spdlog)
+
+target_sources(render_obj
+        PUBLIC
+        FILE_SET module_list TYPE CXX_MODULES FILES
+        src/flags.cppm
+        src/reflection.cppm
+        src/window.cppm)
+
+add_library(universal OBJECT)
+target_compile_features(universal PRIVATE cxx_std_26)
+target_sources(universal
+        PUBLIC
+        FILE_SET module_list TYPE CXX_MODULES FILES
+        src/universal/color_scheme.cppm
+        src/universal/universal.cppm)
+
+add_executable(${PROJECT_NAME})
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_26)
+
+target_sources(${PROJECT_NAME}
+        PRIVATE
+        src/main.cpp)
 
 target_link_libraries(${PROJECT_NAME}
-    glfwext
-    glewext
-    tinyalgebra
-    threadpool
-)
+        PRIVATE
+        exception
+        Boost::program_options
+        render_obj
+        spdlog::spdlog
+        universal
+        stl_reader
+        math)

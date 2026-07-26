@@ -1,0 +1,119 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "san",
+      "hidden": true,
+      "environment": {
+        "LSAN_OPTIONS": "verbosity=1:log_threads=1"
+      }
+    },
+    {
+      "name": "ccache",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER_LAUNCHER": "/usr/bin/ccache"
+      }
+    },
+    {
+      "name": "cpm",
+      "hidden": true,
+      "cacheVariables": {
+        "CPM_SOURCE_CACHE": "$env{HOME}/.cache/CPM"
+      }
+    },
+    {
+      "name": "base",
+      "hidden": true,
+      "inherits": [
+        "cpm",
+        "ccache"
+      ],
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_MAKE_PROGRAM": "/usr/bin/ninja",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "CMAKE_CXX_EXTENSIONS": false
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": [
+        "base"
+      ],
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build_debug/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": [
+        "base"
+      ],
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build_release/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "gcc",
+      "hidden": true,
+      "description": "Using compilers: C = /usr/bin/gcc, CXX = /usr/bin/g++",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/usr/bin/gcc",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -pedantic"
+      }
+    },
+    {
+      "name": "gcc_debug",
+      "displayName": "gcc-debug",
+      "inherits": [
+        "gcc",
+        "debug"
+      ]
+    },
+    {
+      "name": "gcc_release",
+      "displayName": "gcc-release",
+      "inherits": [
+        "gcc",
+        "release"
+      ]
+    },
+    {
+      "name": "clang",
+      "inherits": [
+        "base"
+      ],
+      "hidden": true,
+      "description": "Using compilers: C = /usr/bin/clang, CXX = /usr/bin/clang++",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/usr/bin/clang",
+        "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+        "CMAKE_LINKER_TYPE": "LLD",
+        "CMAKE_CXX_FLAGS": "-stdlib=libc++"
+      }
+    },
+    {
+      "name": "clang_debug",
+      "displayName": "clang-debug",
+      "inherits": [
+        "clang",
+        "debug"
+      ]
+    },
+    {
+      "name": "clang_release",
+      "displayName": "clang-release",
+      "inherits": [
+        "clang",
+        "release"
+      ]
+    }
+  ]
+}
