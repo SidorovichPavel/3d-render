@@ -1,3 +1,0 @@
-[submodule "third_party/tinyalgebra"]
-	path = third_party/tinyalgebra
-	url = git@github.com:SidorovichPavel/tinyalgebra.git

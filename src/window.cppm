@@ -12,8 +12,8 @@ module;
 
 export module window;
 
-export import flags;
-export import reflection;
+import universal;
+import reflection;
 import exception;
 
 export namespace mfb {
@@ -24,7 +24,7 @@ enum class MouseButton : std::uint8_t;
 enum class UpdateState : std::int8_t;
 enum class WindowFlag : std::uint8_t;
 
-using WindowFlags = utils::Flags<WindowFlag>;
+using WindowFlags = universal::Flags<WindowFlag>;
 
 class MfbRuntimeError : public exception::RuntimeError {
  public:
@@ -66,8 +66,9 @@ class Window {
   WindowId id_{0};
 };
 
-auto MakeColor(const std::uint8_t r, const std::uint8_t g, const std::uint8_t b,
-               const std::uint8_t a) noexcept -> std::uint32_t {
+auto MakeColor2(const std::uint8_t r, const std::uint8_t g,
+                const std::uint8_t b, const std::uint8_t a) noexcept
+    -> std::uint32_t {
   return MFB_ARGB(a, r, g, b);
 }
 

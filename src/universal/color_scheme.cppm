@@ -16,7 +16,7 @@ constexpr auto operator""_u16(unsigned long long val) -> std::uint16_t {
 
 }  // namespace
 
-export namespace color_scheme {
+export namespace universal::color_scheme {
 
 float HueToRgb(float p, float q, float t) {
   if (t < 0.0f) t += 1.0f;
@@ -55,4 +55,4 @@ auto HSLtoRGB2(float h, float s, float l) {
   return std::make_tuple(fix(r), fix(g), fix(b));
 }
 
-}  // namespace color_scheme
+}  // namespace universal::color_scheme

@@ -1,12 +1,12 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
-#include <functional>
+#include <iostream>
 #include <mdspan>
 #include <print>
 #include <ranges>
+#include <simd>
 #include <sstream>
-#include <utility>
 #include <vector>
 
 #include <boost/program_options.hpp>
@@ -60,8 +60,6 @@ int main(int argc, char** argv) {
 
   spdlog::set_level(spdlog::level::debug);
 
-  math::Vector<float, 3> vec(1.f);
-
   try {
     constexpr auto S = 0.9f;
     constexpr auto L = 0.5f;
@@ -92,11 +90,10 @@ int main(int argc, char** argv) {
 
       for (auto j : std::views::iota(0, kWidth)) {
         const auto H = ((j + ms.count()) % kWidth) / static_cast<float>(kWidth);
-        const auto [r, g, b] = color_scheme::HSLtoRGB2(H, S, L);
+        using universal::color_scheme::HSLtoRGB2;
+        const auto color = std::apply(mfb::MakeColor, HSLtoRGB2(H, S, L));
 
-        const auto color = mfb::MakeColor(r, g, b);
-
-        for (auto i : std::views::iota(0, kHeight)) {
+        for (auto i : std::views::iota(0, 120)) {
           colors[i, j] = color;
         }
       }

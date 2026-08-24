@@ -1,18 +1,17 @@
 # Build folders
-build/
+build_*/
 .cache/
 compile_commands.json
 
 # CMake
 CMakeCache.txt
+CMakeUserPresets.json
 
 # IDEs
 .idea/
 .vs/
 .vscode/
 
-# Libraries
-/third_party
-
-# resources
-/resources/models
+# Deps
+third_party/*
+!third_party/deps.txt

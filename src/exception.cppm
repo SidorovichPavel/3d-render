@@ -17,7 +17,7 @@ class StackfullException : public std::exception {
   explicit StackfullException(std::string message)
       : message_(std::move(message)) {}
 
-  virtual auto What() const noexcept -> std::string { return message_; }
+  auto What() const noexcept -> std::string { return message_; }
 
   auto Where() const -> std::string {
     return boost::stacktrace::to_string(trace_);
