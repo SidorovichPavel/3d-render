@@ -9,7 +9,6 @@ import math.simd.x86_64_v4;
 namespace {
 
 using math::simd::x86_64_v4::mul;
-using math::simd::x86_64_v4::mul2;
 
 using math::simd::mat4;
 
@@ -37,13 +36,6 @@ decl_benchmark(mat_mul_avx512, 1, 100);
 decl_benchmark(mat_mul_avx512, 1, 500);
 decl_benchmark(mat_mul_avx512, 1, 1000);
 decl_benchmark(mat_mul_avx512, 1, 10000);
-
-decl_benchmark(mat_mul_avx512, 2, 1);
-decl_benchmark(mat_mul_avx512, 2, 10);
-decl_benchmark(mat_mul_avx512, 2, 100);
-decl_benchmark(mat_mul_avx512, 2, 500);
-decl_benchmark(mat_mul_avx512, 2, 1000);
-decl_benchmark(mat_mul_avx512, 2, 10000);
 
 }  // namespace
 
